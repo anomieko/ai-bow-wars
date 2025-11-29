@@ -24,6 +24,9 @@ export type AppScreen = 'menu' | 'custom-select' | 'leaderboard' | 'info' | 'gam
 // Camera modes for cinematic experience
 export type CameraMode = 'intro' | 'left-archer' | 'right-archer' | 'follow-arrow' | 'result' | 'overview';
 
+// Match type for leaderboard
+export type MatchType = 'random' | 'custom';
+
 interface GameStore extends GameState {
   // App navigation
   screen: AppScreen;
@@ -33,8 +36,11 @@ interface GameStore extends GameState {
   cameraMode: CameraMode;
   setCameraMode: (mode: CameraMode) => void;
 
+  // Match type (random vs custom) - only random affects ELO
+  matchType: MatchType;
+
   // Actions
-  selectModels: (leftModelId: string, rightModelId: string) => void;
+  selectModels: (leftModelId: string, rightModelId: string, matchType?: MatchType) => void;
   selectRandomModels: () => void;
   startMatch: () => void;
   setPhase: (phase: GamePhase) => void;
@@ -91,6 +97,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   ...initialState,
   screen: 'menu',
   cameraMode: 'overview',
+  matchType: 'random',
   currentArrowPath: null,
   thinkingModelId: null,
   lastHitResult: null,
@@ -105,7 +112,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ cameraMode: mode });
   },
 
-  selectModels: (leftModelId: string, rightModelId: string) => {
+  selectModels: (leftModelId: string, rightModelId: string, matchType: MatchType = 'custom') => {
     const setup = generateMatchSetup();
 
     const matchSetup: MatchSetup = {
@@ -132,6 +139,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       matchSetup,
       leftArcher,
       rightArcher,
+      matchType,
       phase: 'ready',
       turnNumber: 0,
       roundNumber: 0,
@@ -155,7 +163,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const leftModel = shuffled[0];
     const rightModel = shuffled[1];
 
-    get().selectModels(leftModel.id, rightModel.id);
+    // Random matchups are ranked (affect ELO)
+    get().selectModels(leftModel.id, rightModel.id, 'random');
   },
 
   startMatch: () => {
@@ -338,6 +347,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (state.matchSetup && state.leftArcher && state.rightArcher) {
       const leftShots = state.turns.filter(t => t.modelId === state.leftArcher!.modelId).length;
       const rightShots = state.turns.filter(t => t.modelId === state.rightArcher!.modelId).length;
+      const matchType = state.matchType; // 'random' or 'custom'
 
       if (reason === 'tie') {
         // Tie - record both participants
@@ -355,6 +365,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             distance: state.matchSetup.distance,
             windSpeed: state.matchSetup.wind.speed,
             windDirection: state.matchSetup.wind.direction,
+            matchType,
           }),
         }).catch(err => {
           console.error('Failed to record match:', err);
@@ -379,6 +390,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             distance: state.matchSetup.distance,
             windSpeed: state.matchSetup.wind.speed,
             windDirection: state.matchSetup.wind.direction,
+            matchType,
           }),
         }).catch(err => {
           console.error('Failed to record match:', err);

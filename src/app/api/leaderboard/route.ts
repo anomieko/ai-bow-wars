@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     // Validate required fields
-    const { winnerId, loserId, leftModelId, rightModelId, winReason, winnerShots, loserShots, distance, windSpeed, windDirection } = body;
+    const { winnerId, loserId, leftModelId, rightModelId, winReason, winnerShots, loserShots, distance, windSpeed, windDirection, matchType } = body;
 
     // For ties, we need leftModelId and rightModelId. For wins, we need winnerId and loserId.
     if (winReason === 'tie') {
@@ -85,6 +85,7 @@ export async function POST(request: Request) {
       distance: distance || 100,
       windSpeed: windSpeed || 0,
       windDirection: windDirection || 'left',
+      matchType: matchType || 'random', // Default to random for backwards compatibility
     });
 
     return NextResponse.json({

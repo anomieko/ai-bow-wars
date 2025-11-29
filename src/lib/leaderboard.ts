@@ -1,19 +1,27 @@
 /**
  * Leaderboard data management using Vercel KV
+ * Uses ELO rating system for proper competitive ranking
  */
 
 import { kv } from '@vercel/kv';
 import { MODELS } from '@/config/models';
 
+// ELO constants
+const STARTING_ELO = 1000;
+const K_FACTOR = 32; // Standard K-factor for competitive games
+const MIN_GAMES_FOR_RANKING = 3; // Minimum games to appear in rankings
+
 // Types
 export interface ModelStats {
   modelId: string;
-  wins: number;
-  losses: number;
-  ties: number;
-  headshots: number;
-  bodyshots: number;
-  totalShots: number;
+  elo: number;           // ELO rating (only from ranked/random matches)
+  wins: number;          // Total wins (ranked only)
+  losses: number;        // Total losses (ranked only)
+  ties: number;          // Total ties (ranked only)
+  headshots: number;     // Headshot wins
+  bodyshots: number;     // Bodyshot wins
+  totalShots: number;    // Total arrows fired
+  rankedGames: number;   // Number of ranked games played
 }
 
 export interface MatchRecord {
@@ -29,6 +37,25 @@ export interface MatchRecord {
   distance: number;
   windSpeed: number;
   windDirection: 'left' | 'right';
+  matchType: 'random' | 'custom';  // Only random matches affect ELO
+}
+
+/**
+ * Calculate expected score for ELO
+ * E = 1 / (1 + 10^((Rb - Ra)/400))
+ */
+function expectedScore(ratingA: number, ratingB: number): number {
+  return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+}
+
+/**
+ * Calculate new ELO rating
+ * R' = R + K * (S - E)
+ * S = 1 for win, 0.5 for tie, 0 for loss
+ */
+function calculateNewElo(currentRating: number, opponentRating: number, score: number): number {
+  const expected = expectedScore(currentRating, opponentRating);
+  return Math.round(currentRating + K_FACTOR * (score - expected));
 }
 
 export interface LeaderboardData {
@@ -43,6 +70,40 @@ const MATCHES_KEY = 'leaderboard:matches';
 const TOTAL_KEY = 'leaderboard:total';
 
 /**
+ * Create default stats for a model
+ */
+function createDefaultStats(modelId: string): ModelStats {
+  return {
+    modelId,
+    elo: STARTING_ELO,
+    wins: 0,
+    losses: 0,
+    ties: 0,
+    headshots: 0,
+    bodyshots: 0,
+    totalShots: 0,
+    rankedGames: 0,
+  };
+}
+
+/**
+ * Migrate old stats format to new format with ELO
+ */
+function migrateStats(stats: Partial<ModelStats> & { modelId: string }): ModelStats {
+  return {
+    modelId: stats.modelId,
+    elo: stats.elo ?? STARTING_ELO,
+    wins: stats.wins ?? 0,
+    losses: stats.losses ?? 0,
+    ties: stats.ties ?? 0,
+    headshots: stats.headshots ?? 0,
+    bodyshots: stats.bodyshots ?? 0,
+    totalShots: stats.totalShots ?? 0,
+    rankedGames: stats.rankedGames ?? (stats.wins ?? 0) + (stats.losses ?? 0) + (stats.ties ?? 0),
+  };
+}
+
+/**
  * Get current leaderboard data
  */
 export async function getLeaderboard(): Promise<LeaderboardData> {
@@ -53,21 +114,13 @@ export async function getLeaderboard(): Promise<LeaderboardData> {
       kv.get<number>(TOTAL_KEY),
     ]);
 
-    // Initialize stats for all models if not exists
+    // Initialize stats for all models, migrating old format if needed
     const allStats: Record<string, ModelStats> = {};
     for (const model of MODELS) {
-      allStats[model.id] = stats?.[model.id] || {
-        modelId: model.id,
-        wins: 0,
-        losses: 0,
-        ties: 0,
-        headshots: 0,
-        bodyshots: 0,
-        totalShots: 0,
-      };
-      // Ensure ties field exists for older data
-      if (allStats[model.id].ties === undefined) {
-        allStats[model.id].ties = 0;
+      if (stats?.[model.id]) {
+        allStats[model.id] = migrateStats(stats[model.id]);
+      } else {
+        allStats[model.id] = createDefaultStats(model.id);
       }
     }
 
@@ -81,15 +134,7 @@ export async function getLeaderboard(): Promise<LeaderboardData> {
     // Return empty data on error
     const emptyStats: Record<string, ModelStats> = {};
     for (const model of MODELS) {
-      emptyStats[model.id] = {
-        modelId: model.id,
-        wins: 0,
-        losses: 0,
-        ties: 0,
-        headshots: 0,
-        bodyshots: 0,
-        totalShots: 0,
-      };
+      emptyStats[model.id] = createDefaultStats(model.id);
     }
     return {
       stats: emptyStats,
@@ -99,8 +144,12 @@ export async function getLeaderboard(): Promise<LeaderboardData> {
   }
 }
 
+// Export for UI
+export { MIN_GAMES_FOR_RANKING };
+
 /**
  * Record a match result
+ * Only random matches affect ELO ratings
  */
 export async function recordMatch(match: Omit<MatchRecord, 'id' | 'timestamp'>): Promise<void> {
   try {
@@ -111,62 +160,85 @@ export async function recordMatch(match: Omit<MatchRecord, 'id' | 'timestamp'>):
     };
 
     // Get current stats
-    const currentStats = await kv.get<Record<string, ModelStats>>(STATS_KEY) || {};
+    const rawStats = await kv.get<Record<string, ModelStats>>(STATS_KEY) || {};
+    const currentStats: Record<string, ModelStats> = {};
 
-    // Helper to initialize stats for a model
-    const initStats = (modelId: string) => {
+    // Helper to get or initialize stats for a model
+    const getStats = (modelId: string): ModelStats => {
       if (!currentStats[modelId]) {
-        currentStats[modelId] = {
-          modelId,
-          wins: 0,
-          losses: 0,
-          ties: 0,
-          headshots: 0,
-          bodyshots: 0,
-          totalShots: 0,
-        };
+        currentStats[modelId] = rawStats[modelId]
+          ? migrateStats(rawStats[modelId])
+          : createDefaultStats(modelId);
       }
-      // Ensure ties exists for older data
-      if (currentStats[modelId].ties === undefined) {
-        currentStats[modelId].ties = 0;
-      }
+      return currentStats[modelId];
     };
+
+    const isRanked = match.matchType === 'random';
 
     if (match.winReason === 'tie') {
       // Handle tie - both models get a tie recorded
       const leftModel = match.leftModelId!;
       const rightModel = match.rightModelId!;
 
-      initStats(leftModel);
-      initStats(rightModel);
+      const leftStats = getStats(leftModel);
+      const rightStats = getStats(rightModel);
 
-      currentStats[leftModel].ties += 1;
-      currentStats[leftModel].totalShots += match.winnerShots; // winnerShots = left shots for ties
+      // Always update shot count
+      leftStats.totalShots += match.winnerShots;
+      rightStats.totalShots += match.loserShots;
 
-      currentStats[rightModel].ties += 1;
-      currentStats[rightModel].totalShots += match.loserShots; // loserShots = right shots for ties
+      // Only update ELO and ranked stats for random matches
+      if (isRanked) {
+        // ELO for tie: both get 0.5 score
+        const leftNewElo = calculateNewElo(leftStats.elo, rightStats.elo, 0.5);
+        const rightNewElo = calculateNewElo(rightStats.elo, leftStats.elo, 0.5);
+
+        leftStats.elo = leftNewElo;
+        rightStats.elo = rightNewElo;
+        leftStats.ties += 1;
+        rightStats.ties += 1;
+        leftStats.rankedGames += 1;
+        rightStats.rankedGames += 1;
+      }
     } else {
       // Normal win/loss
-      initStats(match.winnerId!);
-      initStats(match.loserId!);
+      const winnerStats = getStats(match.winnerId!);
+      const loserStats = getStats(match.loserId!);
 
-      // Update winner stats
-      currentStats[match.winnerId!].wins += 1;
-      currentStats[match.winnerId!].totalShots += match.winnerShots;
-      if (match.winReason === 'headshot') {
-        currentStats[match.winnerId!].headshots += 1;
-      } else if (match.winReason === 'bodyshot') {
-        currentStats[match.winnerId!].bodyshots += 1;
+      // Always update shot count
+      winnerStats.totalShots += match.winnerShots;
+      loserStats.totalShots += match.loserShots;
+
+      // Only update ELO and ranked stats for random matches
+      if (isRanked) {
+        // ELO: winner gets 1, loser gets 0
+        const winnerNewElo = calculateNewElo(winnerStats.elo, loserStats.elo, 1);
+        const loserNewElo = calculateNewElo(loserStats.elo, winnerStats.elo, 0);
+
+        winnerStats.elo = winnerNewElo;
+        loserStats.elo = loserNewElo;
+        winnerStats.wins += 1;
+        loserStats.losses += 1;
+        winnerStats.rankedGames += 1;
+        loserStats.rankedGames += 1;
+
+        if (match.winReason === 'headshot') {
+          winnerStats.headshots += 1;
+        } else if (match.winReason === 'bodyshot') {
+          winnerStats.bodyshots += 1;
+        }
       }
+    }
 
-      // Update loser stats
-      currentStats[match.loserId!].losses += 1;
-      currentStats[match.loserId!].totalShots += match.loserShots;
+    // Merge with existing stats (preserve models not in this match)
+    const mergedStats = { ...rawStats };
+    for (const [modelId, stats] of Object.entries(currentStats)) {
+      mergedStats[modelId] = stats;
     }
 
     // Save everything
     await Promise.all([
-      kv.set(STATS_KEY, currentStats),
+      kv.set(STATS_KEY, mergedStats),
       kv.lpush(MATCHES_KEY, matchRecord),
       kv.incr(TOTAL_KEY),
       // Trim matches list to last 100

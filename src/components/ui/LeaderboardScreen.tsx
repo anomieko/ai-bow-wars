@@ -13,13 +13,18 @@ interface LeaderboardScreenProps {
 
 interface ModelStats {
   modelId: string;
+  elo: number;
   wins: number;
   losses: number;
   ties: number;
   headshots: number;
   bodyshots: number;
   totalShots: number;
+  rankedGames: number;
 }
+
+// Minimum games required for ranking
+const MIN_GAMES_FOR_RANKING = 3;
 
 interface RecentMatch {
   id: string;
@@ -34,6 +39,7 @@ interface RecentMatch {
   distance?: number;
   windSpeed?: number;
   windDirection?: 'left' | 'right';
+  matchType?: 'random' | 'custom';
 }
 
 interface LeaderboardData {
@@ -72,27 +78,30 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
     fetchLeaderboard();
   }, []);
 
-  // Sort models by win rate
+  // Sort models by ELO (ranked models first, then unranked by games played)
   const sortedStats = data
     ? Object.values(data.stats)
         .map((stats) => {
-          const totalGames = stats.wins + stats.losses + stats.ties;
+          const isRanked = stats.rankedGames >= MIN_GAMES_FOR_RANKING;
           return {
             ...stats,
-            totalGames,
-            winRate: totalGames > 0 ? (stats.wins + stats.ties * 0.5) / totalGames : 0,
+            isRanked,
           };
         })
         .sort((a, b) => {
-          if (b.winRate !== a.winRate) return b.winRate - a.winRate;
-          if (b.wins !== a.wins) return b.wins - a.wins;
-          return b.totalGames - a.totalGames;
+          // Ranked models come first
+          if (a.isRanked && !b.isRanked) return -1;
+          if (!a.isRanked && b.isRanked) return 1;
+          // Within same category, sort by ELO
+          if (b.elo !== a.elo) return b.elo - a.elo;
+          // Tiebreaker: more games played
+          return b.rankedGames - a.rankedGames;
         })
     : [];
 
   const totalMatches = data?.totalMatches || 0;
+  const totalRankedGames = sortedStats.reduce((sum, s) => sum + s.rankedGames, 0) / 2; // Divide by 2 since each match has 2 participants
   const totalHeadshots = sortedStats.reduce((sum, s) => sum + s.headshots, 0);
-  const totalTies = sortedStats.reduce((sum, s) => sum + s.ties, 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
@@ -155,8 +164,8 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
           {!loading && !error && (
             <div className="flex items-center justify-center gap-8 mb-8 text-center">
               <div>
-                <div className="text-3xl font-bold text-white">{totalMatches}</div>
-                <div className="text-white/40 text-sm">Matches</div>
+                <div className="text-3xl font-bold text-white">{Math.floor(totalRankedGames)}</div>
+                <div className="text-white/40 text-sm">Ranked</div>
               </div>
               <div className="w-px h-10 bg-white/10" />
               <div>
@@ -176,27 +185,30 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
             <div className="space-y-2">
               {sortedStats.map((stats, index) => {
                 const config = getModelConfig(stats.modelId);
-                const rating = (stats.winRate * 100).toFixed(0);
-                const hasMatches = stats.totalGames > 0;
+                const hasMatches = stats.rankedGames > 0;
+                const isRanked = stats.isRanked;
+
+                // Only count ranked positions for medals
+                const rankedIndex = sortedStats.filter(s => s.isRanked).findIndex(s => s.modelId === stats.modelId);
 
                 return (
                   <div
                     key={stats.modelId}
                     className={`flex items-center gap-4 p-4 rounded-xl transition-all ${
-                      !hasMatches ? 'opacity-40' : 'hover:bg-white/5'
+                      !hasMatches ? 'opacity-40' : !isRanked ? 'opacity-60' : 'hover:bg-white/5'
                     }`}
                     style={{
-                      backgroundColor: hasMatches && index < 3 ? `${config.color}10` : 'rgba(255,255,255,0.03)',
+                      backgroundColor: isRanked && rankedIndex < 3 ? `${config.color}10` : 'rgba(255,255,255,0.03)',
                     }}
                   >
                     {/* Rank */}
                     <div className="w-8 text-center">
-                      {hasMatches ? (
+                      {isRanked ? (
                         <>
-                          {index === 0 && <span className="text-2xl">🥇</span>}
-                          {index === 1 && <span className="text-2xl">🥈</span>}
-                          {index === 2 && <span className="text-2xl">🥉</span>}
-                          {index > 2 && <span className="text-white/30 font-medium">{index + 1}</span>}
+                          {rankedIndex === 0 && <span className="text-2xl">🥇</span>}
+                          {rankedIndex === 1 && <span className="text-2xl">🥈</span>}
+                          {rankedIndex === 2 && <span className="text-2xl">🥉</span>}
+                          {rankedIndex > 2 && <span className="text-white/30 font-medium">{rankedIndex + 1}</span>}
                         </>
                       ) : (
                         <span className="text-white/20">-</span>
@@ -208,7 +220,14 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
                       <span className="text-3xl">{config.icon}</span>
                       <div>
                         <div className="text-white font-semibold">{config.name}</div>
-                        <div className="text-sm text-white/40">{config.provider}</div>
+                        <div className="text-sm text-white/40">
+                          {config.provider}
+                          {!isRanked && hasMatches && (
+                            <span className="ml-2 text-yellow-400/60">
+                              ({MIN_GAMES_FOR_RANKING - stats.rankedGames} more to rank)
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -225,25 +244,27 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
                           </>
                         )}
                       </div>
-                      <div className="text-xs text-white/30">W-L</div>
+                      <div className="text-xs text-white/30">W-L-T</div>
                     </div>
 
-                    {/* Win rate */}
-                    <div className="w-16 text-right">
+                    {/* ELO Score */}
+                    <div className="w-20 text-right">
                       {hasMatches ? (
-                        <span
-                          className="text-lg font-bold"
-                          style={{
-                            color:
-                              parseFloat(rating) >= 60
-                                ? '#4ade80'
-                                : parseFloat(rating) >= 40
-                                  ? '#facc15'
-                                  : '#f87171',
-                          }}
-                        >
-                          {rating}%
-                        </span>
+                        <div>
+                          <span
+                            className="text-lg font-bold"
+                            style={{
+                              color: isRanked
+                                ? stats.elo >= 1100 ? '#4ade80'
+                                : stats.elo >= 900 ? '#facc15'
+                                : '#f87171'
+                                : '#6b7280',
+                            }}
+                          >
+                            {stats.elo}
+                          </span>
+                          <div className="text-xs text-white/30">ELO</div>
+                        </div>
                       ) : (
                         <span className="text-white/20">-</span>
                       )}
@@ -262,6 +283,7 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
                 {data.recentMatches.slice(0, 5).map((match) => {
                   const isTie = match.winReason === 'tie';
                   const timeAgo = getTimeAgo(match.timestamp);
+                  const isRanked = match.matchType !== 'custom';
 
                   if (isTie) {
                     const left = getModelConfig(match.leftModelId || 'unknown');
@@ -269,7 +291,7 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
                     return (
                       <div
                         key={match.id}
-                        className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03]"
+                        className={`flex items-center justify-between p-3 rounded-xl bg-white/[0.03] ${!isRanked ? 'opacity-60' : ''}`}
                       >
                         <div className="flex items-center gap-2 text-sm">
                           <span className="text-xl">{left.icon}</span>
@@ -277,6 +299,7 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
                           <span className="text-white/30 px-2">draw</span>
                           <span className="text-white/80">{right.name}</span>
                           <span className="text-xl">{right.icon}</span>
+                          {!isRanked && <span className="ml-1 text-xs text-white/30">(custom)</span>}
                         </div>
                         <div className="text-xs text-white/30">{timeAgo}</div>
                       </div>
@@ -289,7 +312,7 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
                   return (
                     <div
                       key={match.id}
-                      className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03]"
+                      className={`flex items-center justify-between p-3 rounded-xl bg-white/[0.03] ${!isRanked ? 'opacity-60' : ''}`}
                     >
                       <div className="flex items-center gap-2 text-sm">
                         <span className="text-xl">{winner.icon}</span>
@@ -300,6 +323,7 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
                         {match.winReason === 'headshot' && (
                           <span className="ml-1 text-xs text-red-400">headshot</span>
                         )}
+                        {!isRanked && <span className="ml-1 text-xs text-white/30">(custom)</span>}
                       </div>
                       <div className="text-xs text-white/30">{timeAgo}</div>
                     </div>
