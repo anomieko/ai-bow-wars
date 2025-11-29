@@ -78,44 +78,38 @@ export function buildArcherPrompt(
 ): string {
   // Filter turns for this archer only
   const myTurns = turns.filter(t => t.modelId === archer.modelId);
+  const nextShotNum = myTurns.length + 1;
 
-  // Build shot history with detailed feedback
+  // Build shot history with detailed feedback (limit to last 4 shots to save tokens)
+  const recentTurns = myTurns.slice(-4);
   let shotHistory = '';
-  if (myTurns.length === 0) {
-    shotHistory = `This is your first shot. For this distance, try a medium-high arc (around 40-50°) with fairly strong power (around 65-80%). Adjust based on results!`;
+  if (recentTurns.length === 0) {
+    shotHistory = 'No shots yet - estimate based on distance and wind!';
   } else {
-    shotHistory = myTurns.map(t => {
+    shotHistory = recentTurns.map((t, idx) => {
+      const shotNum = myTurns.length - recentTurns.length + idx + 1;
       const feedback = formatResultForPrompt(t.result, t.arrowPath, archer.position.x, opponent.position.x);
-      return `Shot ${myTurns.indexOf(t) + 1}: ${t.shot.angle.toFixed(0)}° @ ${t.shot.power.toFixed(0)}% → ${feedback}`;
+      return `${shotNum}: ${t.shot.angle.toFixed(0)}°/${t.shot.power.toFixed(0)}% → ${feedback}`;
     }).join('\n');
   }
 
   const distanceDesc = getDistanceEstimate(distance);
   const windDesc = getWindEstimate(wind);
 
-  return `You are an archer in a duel. Hit your opponent to win!
+  return `Archer duel - hit your opponent to win!
 
 SITUATION:
-- Target is ${distanceDesc} away
+- Target: ${distanceDesc}
 - Wind: ${windDesc} blowing ${wind.direction.toUpperCase()}
-- Your HP: ${archer.health}/2 | Enemy HP: ${opponent.health}/2
+- HP: You ${archer.health}/2 | Enemy ${opponent.health}/2
 
-HOW AIMING WORKS:
-- "power" controls distance (more power = arrow goes further)
-- "angle" controls trajectory (higher angle = taller arc)
-- Around 42-45° usually gives best range
-- Typical good shots: 40-48° angle, 65-80% power
+AIMING: "power" controls distance, "angle" controls arc height. Learn from feedback below.
 
-ADJUSTING YOUR AIM:
-- Arrow FELL SHORT? → increase power OR decrease angle slightly
-- Arrow went OVER? → decrease angle (flatter trajectory)
-- Arrow went UNDER? → increase angle (higher arc)
-
-YOUR PREVIOUS SHOTS:
+YOUR SHOTS (angle°/power%):
 ${shotHistory}
 
-Respond with ONLY this JSON (no other text):
-{"angle": 45, "power": 70, "reasoning": "brief thought"}`;
+Now take shot ${nextShotNum}. Respond with ONLY valid JSON, no other text:
+{"angle": <0-90>, "power": <0-100>, "reasoning": "<brief>"}`;
 }
 
 /**
