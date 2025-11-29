@@ -101,6 +101,16 @@ export const MODELS: ModelConfig[] = [
     accentColor: '#0d9488',
     icon: '🩵',
   },
+
+  // === Alibaba (Qwen3 - Apr 2025) ===
+  {
+    id: 'qwen/qwen3-30b-a3b',
+    name: 'Qwen3 30B',
+    provider: 'Alibaba',
+    color: '#ff6a00',
+    accentColor: '#e55d00',
+    icon: '🧡',
+  },
 ];
 
 // === Helper Functions ===
