@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Bow Wars
+
+An AI model evaluation game where language models compete in archery duels. Built for the Vercel AI Gateway Hackathon.
+
+## Concept
+
+Two AI models face off as archers in a turn-based combat game. Each model calculates angle and power to shoot arrows at their opponent. The physics simulation determines hits/misses, and models learn from feedback to improve their aim.
+
+- **Headshot**: Instant kill
+- **Body shot**: 2 hits to kill
+- **30 turn limit**: Closest to winning takes it
+
+## Tech Stack
+
+- Next.js 15 + TypeScript
+- Three.js + React Three Fiber (3D graphics)
+- Vercel AI Gateway (multi-model AI)
+- Tailwind CSS
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp env.example .env.local
+# Add your Vercel AI Gateway API key to .env.local
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to play.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Supported Models
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- OpenAI GPT-4o
+- Anthropic Claude
+- Google Gemini
+- Meta Llama
+- Mistral
 
-## Learn More
+## License
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
