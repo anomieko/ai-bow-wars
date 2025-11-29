@@ -108,8 +108,9 @@ AIMING: "power" controls distance, "angle" controls arc height. Learn from feedb
 YOUR SHOTS (angle°/power%):
 ${shotHistory}
 
-Now take shot ${nextShotNum}. Respond with ONLY valid JSON, no other text:
-{"angle": <0-90>, "power": <0-100>, "reasoning": "<brief>"}`;
+Shot ${nextShotNum}. Output ONLY this JSON format, nothing else:
+{"angle": 45, "power": 70, "reasoning": "adjusting for wind"}
+Replace values with your chosen angle (0-90), power (0-100), and reasoning.`;
 }
 
 /**
@@ -203,25 +204,24 @@ function formatResultForPrompt(
 export function parseAIResponse(response: string): { reasoning: string; angle: number; power: number } | null {
   try {
     // Step 1: Clean up the response
-    let cleaned = response;
+    let cleaned = response.trim();
 
-    // Remove markdown code blocks
-    cleaned = cleaned.replace(/```json\s*/gi, '');
-    cleaned = cleaned.replace(/```\s*/g, '');
+    // Remove markdown code blocks (greedy)
+    cleaned = cleaned.replace(/```(?:json)?\s*([\s\S]*?)```/gi, '$1');
 
-    // Remove common prefixes AIs add
-    cleaned = cleaned.replace(/^(here'?s?|my|the)\s+(response|answer|shot|json)\s*:?\s*/i, '');
+    // Remove common prefixes AIs add (expanded list)
+    cleaned = cleaned.replace(/^(?:sure!?|okay!?|here(?:'?s)?|my|the|i'?ll|let me)\s*(?:is\s+)?(?:my\s+)?(?:response|answer|shot|json|output)?\s*:?\s*/i, '');
 
-    // Step 2: Try to extract JSON object
-    const jsonMatch = cleaned.match(/\{[\s\S]*?\}/);
+    // Step 2: Try to extract JSON object (greedy to get full object)
+    const jsonMatch = cleaned.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
     if (!jsonMatch) {
       // Try to extract values directly if no JSON found
-      const angleMatch = cleaned.match(/angle["\s:]+(\d+)/i);
-      const powerMatch = cleaned.match(/power["\s:]+(\d+)/i);
+      const angleMatch = cleaned.match(/angle["\s:]+(\d+(?:\.\d+)?)/i);
+      const powerMatch = cleaned.match(/power["\s:]+(\d+(?:\.\d+)?)/i);
       if (angleMatch && powerMatch) {
         return {
-          angle: Math.max(0, Math.min(90, parseInt(angleMatch[1]))),
-          power: Math.max(0, Math.min(100, parseInt(powerMatch[1]))),
+          angle: Math.max(0, Math.min(90, parseFloat(angleMatch[1]))),
+          power: Math.max(0, Math.min(100, parseFloat(powerMatch[1]))),
           reasoning: 'Extracted from non-JSON response',
         };
       }
@@ -241,27 +241,34 @@ export function parseAIResponse(response: string): { reasoning: string; angle: n
     jsonStr = jsonStr.replace(/,\s*]/g, ']');
 
     // Fix unquoted keys
-    jsonStr = jsonStr.replace(/(\{|\,)\s*(\w+)\s*:/g, '$1"$2":');
+    jsonStr = jsonStr.replace(/(\{|,)\s*(\w+)\s*:/g, '$1"$2":');
 
     // Step 4: Parse and validate
     const parsed = JSON.parse(jsonStr);
 
-    // Extract and validate values
-    const angle = Math.max(0, Math.min(90, Number(parsed.angle) || 45));
-    const power = Math.max(0, Math.min(100, Number(parsed.power) || 70));
+    // Handle string-wrapped numbers (some models return "45" instead of 45)
+    const rawAngle = parsed.angle;
+    const rawPower = parsed.power;
+
+    const angle = Math.max(0, Math.min(90, Number(rawAngle) || 0));
+    const power = Math.max(0, Math.min(100, Number(rawPower) || 0));
     const reasoning = String(parsed.reasoning || parsed.thought || parsed.explanation || 'No reasoning provided');
 
-    // Sanity check - if values are exactly defaults, parsing might have failed silently
-    if (parsed.angle === undefined && parsed.power === undefined) {
+    // Sanity check - must have both angle and power as valid numbers
+    if ((rawAngle === undefined && rawPower === undefined) || (isNaN(angle) && isNaN(power))) {
       return null;
     }
 
+    // If one value is missing/invalid, return null (don't use partial data)
+    if (angle === 0 && rawAngle === undefined) return null;
+    if (power === 0 && rawPower === undefined) return null;
+
     return { reasoning, angle, power };
   } catch {
-    // Last resort: try regex extraction
+    // Last resort: try regex extraction from original response
     try {
-      const angleMatch = response.match(/["']?angle["']?\s*:\s*(\d+(?:\.\d+)?)/i);
-      const powerMatch = response.match(/["']?power["']?\s*:\s*(\d+(?:\.\d+)?)/i);
+      const angleMatch = response.match(/["']?angle["']?\s*:\s*["']?(\d+(?:\.\d+)?)["']?/i);
+      const powerMatch = response.match(/["']?power["']?\s*:\s*["']?(\d+(?:\.\d+)?)["']?/i);
 
       if (angleMatch && powerMatch) {
         return {

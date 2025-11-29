@@ -41,6 +41,7 @@ interface GameStore extends GameState {
   executeShot: (shot: Shot, arrowPath: Vector2[], result: HitResult) => void;
   nextTurn: () => void;
   endMatch: (winner: string | null, reason: 'headshot' | 'bodyshot' | 'timeout' | 'tie') => void;
+  cancelMatch: (reason: string) => void;
   resetGame: () => void;
   backToMenu: () => void;
 
@@ -384,6 +385,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
         });
       }
     }
+  },
+
+  cancelMatch: (reason: string) => {
+    console.warn('Match cancelled:', reason);
+    set({
+      ...initialState,
+      screen: 'menu',
+      cameraMode: 'overview',
+      currentArrowPath: null,
+      thinkingModelId: null,
+      lastHitResult: null,
+      firstShotWouldKill: false,
+      stuckArrows: [],
+    });
+    // Show alert to user (non-blocking)
+    setTimeout(() => {
+      alert(`Match cancelled: ${reason}`);
+    }, 100);
   },
 
   resetGame: () => {

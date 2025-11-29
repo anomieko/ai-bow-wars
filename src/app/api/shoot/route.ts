@@ -91,6 +91,8 @@ export async function POST(request: NextRequest) {
     let reasoning: string;
     let angle: number;
     let power: number;
+    let parseError = false;
+    let rawResponse: string | undefined;
 
     if (MOCK_MODE) {
       // Mock response for testing without using API credits
@@ -106,11 +108,14 @@ export async function POST(request: NextRequest) {
         maxOutputTokens: 200,
       });
 
+      rawResponse = result.text;
       const parsed = parseAIResponse(result.text);
 
       if (!parsed) {
-        // Smart fallback if parsing fails
-        console.warn(`Failed to parse AI response for ${modelId}:`, result.text.slice(0, 200));
+        // Log the failed response for debugging
+        console.error(`[PARSE FAIL] ${modelId}:`, result.text.slice(0, 300));
+        parseError = true;
+        // Use smart fallback
         const fallback = generateSmartFallback(archer, distance, turns);
         reasoning = fallback.reasoning;
         angle = fallback.angle;
@@ -124,6 +129,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      parseError,
+      rawResponse: parseError ? rawResponse?.slice(0, 200) : undefined,
       shot: {
         reasoning,
         angle,

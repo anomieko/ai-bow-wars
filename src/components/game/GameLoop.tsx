@@ -12,6 +12,8 @@ import { Shot } from '@/types/game';
 
 // Timeout for AI API calls (10 seconds)
 const AI_TIMEOUT_MS = 10000;
+// Cancel match after this many consecutive parse failures for same model
+const MAX_PARSE_FAILURES = 2;
 
 export function GameLoop() {
   const {
@@ -29,10 +31,14 @@ export function GameLoop() {
     setCameraMode,
     startMatch,
     cameraMode,
+    cancelMatch,
   } = useGameStore();
 
   // Debug store for test mode cheats
   const getDebugHitResult = useDebugStore((s) => s.getDebugHitResult);
+
+  // Track consecutive parse failures per model
+  const parseFailuresRef = useRef<{ left: number; right: number }>({ left: 0, right: 0 });
 
   // AbortController to cancel in-flight requests when component unmounts (user clicks Menu)
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -97,6 +103,23 @@ export function GameLoop() {
         console.error('AI error:', data.error);
         // Use fallback shot
         data.shot = { angle: 45, power: 70, reasoning: 'Fallback shot' };
+      }
+
+      // Track parse failures
+      if (data.parseError) {
+        parseFailuresRef.current[currentTurn]++;
+        console.warn(`Parse failure #${parseFailuresRef.current[currentTurn]} for ${currentTurn} archer:`, data.rawResponse);
+
+        // Cancel match if too many consecutive failures
+        if (parseFailuresRef.current[currentTurn] >= MAX_PARSE_FAILURES) {
+          console.error(`Cancelling match: ${currentTurn} archer failed to produce valid JSON ${MAX_PARSE_FAILURES} times`);
+          setThinkingModelId(null);
+          cancelMatch(`${currentArcher.modelId} failed to respond properly`);
+          return;
+        }
+      } else {
+        // Reset failure count on successful parse
+        parseFailuresRef.current[currentTurn] = 0;
       }
 
       const shot: Shot = {
@@ -166,6 +189,7 @@ export function GameLoop() {
     setThinkingModelId,
     setCameraMode,
     getDebugHitResult,
+    cancelMatch,
   ]);
 
   // Auto-start match after intro camera sequence
