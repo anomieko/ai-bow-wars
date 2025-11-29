@@ -16,100 +16,68 @@ export function TurnLog() {
     currentTurn,
     leftArcher,
     rightArcher,
-    thinkingModelId,
-    winner,
-    winReason,
   } = useGameStore();
 
-  if (phase === 'setup') return null;
+  if (phase === 'setup' || phase === 'ready') return null;
 
   const currentArcher = currentTurn === 'left' ? leftArcher : rightArcher;
   const currentConfig = currentArcher ? getModelConfig(currentArcher.modelId) : null;
 
   return (
-    <div className="bg-gray-900 rounded-lg p-4 h-[400px] flex flex-col">
-      <h3 className="text-lg font-bold text-white mb-3">Battle Log</h3>
-
-      {/* Current status */}
-      {phase !== 'finished' && phase !== 'setup' && phase !== 'ready' && currentConfig && (
-        <div
-          className="p-3 rounded-lg mb-3"
-          style={{ backgroundColor: `${currentConfig.color}33` }}
-        >
-          <div className="flex items-center gap-2 text-white">
-            <span className="text-xl">{currentConfig.icon}</span>
-            <span className="font-semibold">Turn {turnNumber}</span>
-            <span className="text-gray-300">- {currentConfig.name}</span>
-          </div>
-          {phase === 'thinking' && (
-            <div className="text-sm text-gray-300 mt-1 animate-pulse">
-              Calculating shot...
-            </div>
-          )}
-          {phase === 'shooting' && (
-            <div className="text-sm text-yellow-400 mt-1">
-              Arrow in flight!
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Winner announcement */}
-      {phase === 'finished' && winner && (
-        <div className="p-4 rounded-lg mb-3 bg-yellow-600 text-center">
-          <div className="text-2xl mb-1">
-            {getModelConfig(winner).icon} {getModelConfig(winner).name} WINS!
-          </div>
-          <div className="text-sm text-yellow-200">
-            {winReason === 'headshot' && 'Headshot!'}
-            {winReason === 'bodyshot' && 'Two body shots!'}
-            {winReason === 'timeout' && 'Most damage after 30 turns'}
-          </div>
-        </div>
-      )}
+    <div className="bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 max-h-[50vh] flex flex-col">
+      <h3 className="text-sm font-bold text-gray-400 mb-2 flex items-center gap-2">
+        <span>Battle Log</span>
+        <span className="text-xs font-normal">({turns.length} shots)</span>
+      </h3>
 
       {/* Turn history */}
-      <div className="flex-1 overflow-y-auto space-y-2">
-        {[...turns].reverse().map((turn) => {
+      <div className="flex-1 overflow-y-auto space-y-1.5 text-xs">
+        {[...turns].reverse().slice(0, 10).map((turn) => {
           const config = getModelConfig(turn.modelId);
-          const isHit = turn.result.type !== 'miss';
 
           return (
             <div
               key={`${turn.turnNumber}-${turn.modelId}`}
-              className="p-2 rounded bg-gray-800 text-sm"
+              className="p-2 rounded bg-gray-800/80"
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <span>{config.icon}</span>
-                  <span className="text-gray-400">T{turn.turnNumber}</span>
-                  <span className="text-white">{config.name}</span>
+                  <span className="text-gray-500">#{turn.turnNumber}</span>
                 </div>
                 <span
-                  className={`px-2 py-0.5 rounded text-xs ${
+                  className={`px-1.5 py-0.5 rounded text-xs font-medium ${
                     turn.result.type === 'headshot'
                       ? 'bg-red-600 text-white'
                       : turn.result.type === 'body'
-                        ? 'bg-orange-600 text-white'
-                        : 'bg-gray-600 text-gray-300'
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-700 text-gray-400'
                   }`}
                 >
                   {formatHitResult(turn.result)}
                 </span>
               </div>
-              <div className="text-gray-400 mt-1">
-                {turn.shot.angle}° / {turn.shot.power}%
-                {turn.shot.reasoning && (
-                  <span className="text-gray-500 ml-2">- {turn.shot.reasoning}</span>
-                )}
+              <div className="text-gray-500 mt-0.5 flex items-center gap-2">
+                <span>{turn.shot.angle.toFixed(1)}° @ {turn.shot.power.toFixed(0)}%</span>
               </div>
+              {turn.shot.reasoning && (
+                <div className="text-gray-600 mt-1 italic truncate" title={turn.shot.reasoning}>
+                  "{turn.shot.reasoning}"
+                </div>
+              )}
             </div>
           );
         })}
 
-        {turns.length === 0 && phase !== 'setup' && (
-          <div className="text-center text-gray-500 py-8">
-            {phase === 'ready' ? 'Press Start to begin!' : 'No shots fired yet'}
+        {turns.length === 0 && (
+          <div className="text-center text-gray-600 py-4">
+            Waiting for first shot...
+          </div>
+        )}
+
+        {turns.length > 10 && (
+          <div className="text-center text-gray-600 py-1 text-xs">
+            +{turns.length - 10} more shots
           </div>
         )}
       </div>

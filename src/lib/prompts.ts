@@ -5,6 +5,27 @@
 import { Archer, Turn, Wind, HitResult } from '@/types/game';
 
 /**
+ * Estimate distance in vague terms
+ */
+function getDistanceEstimate(distance: number): string {
+  if (distance < 85) return 'relatively close';
+  if (distance < 95) return 'moderate distance';
+  if (distance < 105) return 'a fair distance';
+  if (distance < 115) return 'quite far';
+  return 'very far';
+}
+
+/**
+ * Estimate wind in vague terms
+ */
+function getWindEstimate(wind: Wind): string {
+  if (wind.speed <= 3) return 'a light breeze';
+  if (wind.speed <= 7) return 'moderate wind';
+  if (wind.speed <= 11) return 'strong wind';
+  return 'very strong wind';
+}
+
+/**
  * Build the prompt for an AI archer to take their shot
  */
 export function buildArcherPrompt(
@@ -18,56 +39,46 @@ export function buildArcherPrompt(
   // Filter turns for this archer only
   const myTurns = turns.filter(t => t.modelId === archer.modelId);
 
-  // Build shot history
+  // Build shot history - only show YOUR shots and results (learning from feedback)
   let shotHistory = '';
-  if (turns.length === 0) {
-    shotHistory = 'This is the first turn. No shots have been fired yet.';
+  if (myTurns.length === 0) {
+    shotHistory = 'This is your first shot. You have no feedback yet - make your best estimate!';
   } else {
-    shotHistory = turns.map(t => {
-      const isMe = t.modelId === archer.modelId;
-      const prefix = isMe ? 'You' : 'Enemy';
+    shotHistory = myTurns.map(t => {
       const resultStr = formatResultForPrompt(t.result);
-      return `- Turn ${t.turnNumber} (${prefix}): ${t.shot.angle}°, ${t.shot.power}% power → ${resultStr}`;
+      return `- Shot ${myTurns.indexOf(t) + 1}: ${t.shot.angle.toFixed(1)}° angle, ${t.shot.power.toFixed(0)}% power → ${resultStr}`;
     }).join('\n');
   }
 
-  // Calculate height difference
-  const heightDiff = archer.position.y - opponent.position.y;
-  const heightStr = heightDiff > 0
-    ? `You are ${Math.abs(heightDiff).toFixed(1)}m higher than your enemy`
-    : heightDiff < 0
-      ? `You are ${Math.abs(heightDiff).toFixed(1)}m lower than your enemy`
-      : 'You and your enemy are at the same height';
+  const distanceDesc = getDistanceEstimate(distance);
+  const windDesc = getWindEstimate(wind);
 
-  return `You are an archer in a turn-based duel. Your goal is to hit your opponent with an arrow.
+  return `You are an archer in a turn-based duel. Hit your opponent to win!
 
-MATCH CONDITIONS:
-- Distance to enemy: ~${distance} meters
-- Wind: ${wind.speed} m/s blowing ${wind.direction.toUpperCase()}
-- ${heightStr}
+WHAT YOU CAN SEE:
+- Your enemy appears to be ${distanceDesc} away (you must estimate the exact distance)
+- There is ${windDesc} blowing to the ${wind.direction.toUpperCase()}
+- Both archers stand on flat ground
 
-YOUR STATUS:
-- Health: ${archer.health}/2
-- Position: ${archer.side} side
+YOUR STATUS: ${archer.health}/2 HP remaining
+ENEMY STATUS: ${opponent.health}/2 HP remaining
 
-ENEMY STATUS:
-- Health: ${opponent.health}/2
-- Position: ${opponent.side} side
-
-SHOT HISTORY:
+YOUR PREVIOUS SHOTS:
 ${shotHistory}
 
-It's Turn ${turnNumber}. ${myTurns.length > 0 ? 'Use your previous shots to adjust your aim.' : 'Take your first shot!'}
+${myTurns.length > 0 ? `
+LEARN FROM YOUR SHOTS:
+- If shots went SHORT: increase power or lower angle
+- If shots went LONG: decrease power or raise angle
+- If shots went HIGH: lower your angle
+- If shots went LOW: raise your angle
+- Adjust for wind drift by aiming against it
+` : ''}
+Turn ${turnNumber}. Take your shot!
 
-PHYSICS TIPS:
-- Higher angle = more arc, good for long distances
-- Higher power = faster arrow, travels further
-- Wind blowing ${wind.direction} will push arrows to the ${wind.direction}
-- Compensate by aiming ${wind.direction === 'left' ? 'right' : 'left'} of target
-
-Respond with ONLY valid JSON (no markdown, no explanation outside JSON):
+Respond with ONLY valid JSON:
 {
-  "reasoning": "Brief explanation of your aim adjustment",
+  "reasoning": "Brief thought on your aim",
   "angle": <number 0-90>,
   "power": <number 0-100>
 }`;
@@ -78,16 +89,33 @@ function formatResultForPrompt(result: HitResult): string {
     case 'headshot':
       return 'HEADSHOT! (instant kill)';
     case 'body':
-      return 'HIT (body shot)';
+      return 'HIT! (body shot, enemy took damage)';
     case 'miss':
+      // Give vague feedback - no exact measurements
       const parts: string[] = [];
-      if (Math.abs(result.distanceX) > 0.5) {
-        parts.push(`${Math.abs(result.distanceX).toFixed(1)}m ${result.distanceX > 0 ? 'long' : 'short'}`);
+
+      // Horizontal feedback (short/long)
+      if (Math.abs(result.distanceX) > 5) {
+        parts.push(result.distanceX > 0 ? 'way too long' : 'way too short');
+      } else if (Math.abs(result.distanceX) > 2) {
+        parts.push(result.distanceX > 0 ? 'too long' : 'too short');
+      } else if (Math.abs(result.distanceX) > 0.5) {
+        parts.push(result.distanceX > 0 ? 'slightly long' : 'slightly short');
       }
-      if (Math.abs(result.distanceY) > 0.5) {
-        parts.push(`${Math.abs(result.distanceY).toFixed(1)}m ${result.distanceY > 0 ? 'high' : 'low'}`);
+
+      // Vertical feedback (high/low)
+      if (Math.abs(result.distanceY) > 3) {
+        parts.push(result.distanceY > 0 ? 'way too high' : 'way too low');
+      } else if (Math.abs(result.distanceY) > 1) {
+        parts.push(result.distanceY > 0 ? 'too high' : 'too low');
+      } else if (Math.abs(result.distanceY) > 0.3) {
+        parts.push(result.distanceY > 0 ? 'slightly high' : 'slightly low');
       }
-      return parts.length > 0 ? `Miss (${parts.join(', ')})` : 'Miss (very close!)';
+
+      if (parts.length === 0) {
+        return 'Miss - incredibly close! Just barely missed.';
+      }
+      return `Miss - arrow went ${parts.join(' and ')}`;
   }
 }
 

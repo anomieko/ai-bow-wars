@@ -173,8 +173,14 @@ export function formatHitResult(result: HitResult): string {
     case 'body':
       return 'Body hit!';
     case 'miss':
-      const xDir = result.distanceX > 0 ? 'long' : 'short';
-      const yDir = result.distanceY > 0 ? 'high' : 'low';
-      return `Miss (${Math.abs(result.distanceX).toFixed(1)}m ${xDir}, ${Math.abs(result.distanceY).toFixed(1)}m ${yDir})`;
+      // Vague feedback for display
+      const parts: string[] = [];
+      if (Math.abs(result.distanceX) > 0.5) {
+        parts.push(result.distanceX > 0 ? 'long' : 'short');
+      }
+      if (Math.abs(result.distanceY) > 0.5) {
+        parts.push(result.distanceY > 0 ? 'high' : 'low');
+      }
+      return parts.length > 0 ? `Miss (${parts.join(', ')})` : 'Near miss!';
   }
 }

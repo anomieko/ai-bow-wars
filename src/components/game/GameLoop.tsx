@@ -22,6 +22,9 @@ export function GameLoop() {
     executeShot,
     setCurrentArrowPath,
     setThinkingModelId,
+    setCameraMode,
+    startMatch,
+    cameraMode,
   } = useGameStore();
 
   const executeAITurn = useCallback(async () => {
@@ -71,6 +74,9 @@ export function GameLoop() {
         targetArcher
       );
 
+      // Set camera to follow the arrow
+      setCameraMode('follow-arrow');
+
       // Set arrow path for animation
       setCurrentArrowPath(simulation.path);
       setPhase('shooting');
@@ -88,6 +94,7 @@ export function GameLoop() {
         matchSetup.wind,
         targetArcher
       );
+      setCameraMode('follow-arrow');
       setCurrentArrowPath(simulation.path);
       setPhase('shooting');
       executeShot(fallbackShot, simulation.path, simulation.hitResult);
@@ -105,15 +112,27 @@ export function GameLoop() {
     executeShot,
     setCurrentArrowPath,
     setThinkingModelId,
+    setCameraMode,
   ]);
+
+  // Auto-start match after intro camera sequence
+  useEffect(() => {
+    if (phase === 'ready' && cameraMode === 'intro') {
+      // Show intro for 4 seconds then start match
+      const timer = setTimeout(() => {
+        startMatch();
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [phase, cameraMode, startMatch]);
 
   // Trigger AI turn when phase is 'thinking'
   useEffect(() => {
     if (phase === 'thinking') {
-      // Small delay for UI feedback
+      // Longer delay for camera to focus on current archer and show them aiming
       const timer = setTimeout(() => {
         executeAITurn();
-      }, 500);
+      }, 2500);
       return () => clearTimeout(timer);
     }
   }, [phase, executeAITurn]);

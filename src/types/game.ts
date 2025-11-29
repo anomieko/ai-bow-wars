@@ -127,8 +127,8 @@ export const GAME_CONSTANTS = {
   MAX_TURNS: 30,
   MIN_DISTANCE: 80,
   MAX_DISTANCE: 120,
-  MIN_HEIGHT_OFFSET: -5,
-  MAX_HEIGHT_OFFSET: 5,
+  MIN_HEIGHT_OFFSET: 0,    // Archers always on ground
+  MAX_HEIGHT_OFFSET: 0,    // Archers always on ground
   MIN_WIND: 0,
   MAX_WIND: 15,
   GRAVITY: 9.81,

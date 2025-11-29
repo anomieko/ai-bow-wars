@@ -14,18 +14,34 @@ import {
   Vector2,
   GAME_CONSTANTS,
 } from '@/types/game';
-import { generateMatchSetup, simulateArrow } from './physics';
-import { getModelConfig } from '@/config/models';
+import { generateMatchSetup } from './physics';
+import { MODELS } from '@/config/models';
+
+// Extended phases to include menu states
+export type AppScreen = 'menu' | 'custom-select' | 'leaderboard' | 'info' | 'game';
+
+// Camera modes for cinematic experience
+export type CameraMode = 'intro' | 'left-archer' | 'right-archer' | 'follow-arrow' | 'result' | 'overview';
 
 interface GameStore extends GameState {
+  // App navigation
+  screen: AppScreen;
+  setScreen: (screen: AppScreen) => void;
+
+  // Camera
+  cameraMode: CameraMode;
+  setCameraMode: (mode: CameraMode) => void;
+
   // Actions
   selectModels: (leftModelId: string, rightModelId: string) => void;
+  selectRandomModels: () => void;
   startMatch: () => void;
   setPhase: (phase: GamePhase) => void;
   executeShot: (shot: Shot, arrowPath: Vector2[], result: HitResult) => void;
   nextTurn: () => void;
   endMatch: (winner: string, reason: 'headshot' | 'bodyshot' | 'timeout') => void;
   resetGame: () => void;
+  backToMenu: () => void;
 
   // Current arrow animation state
   currentArrowPath: Vector2[] | null;
@@ -34,6 +50,10 @@ interface GameStore extends GameState {
   // Thinking state
   thinkingModelId: string | null;
   setThinkingModelId: (modelId: string | null) => void;
+
+  // Last hit result for effects
+  lastHitResult: HitResult | null;
+  setLastHitResult: (result: HitResult | null) => void;
 }
 
 const initialState: GameState = {
@@ -50,8 +70,19 @@ const initialState: GameState = {
 
 export const useGameStore = create<GameStore>((set, get) => ({
   ...initialState,
+  screen: 'menu',
+  cameraMode: 'overview',
   currentArrowPath: null,
   thinkingModelId: null,
+  lastHitResult: null,
+
+  setScreen: (screen: AppScreen) => {
+    set({ screen });
+  },
+
+  setCameraMode: (mode: CameraMode) => {
+    set({ cameraMode: mode });
+  },
 
   selectModels: (leftModelId: string, rightModelId: string) => {
     const setup = generateMatchSetup();
@@ -86,7 +117,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
       currentTurn: 'left',
       winner: null,
       winReason: null,
+      screen: 'game',
+      cameraMode: 'intro',
+      lastHitResult: null,
     });
+  },
+
+  selectRandomModels: () => {
+    // Pick two random different models
+    const shuffled = [...MODELS].sort(() => Math.random() - 0.5);
+    const leftModel = shuffled[0];
+    const rightModel = shuffled[1];
+
+    get().selectModels(leftModel.id, rightModel.id);
   },
 
   startMatch: () => {
@@ -94,6 +137,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       phase: 'thinking',
       turnNumber: 1,
       currentTurn: 'left',
+      cameraMode: 'left-archer',
     });
   },
 
@@ -132,6 +176,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     set({
       turns: [...state.turns, turn],
+      lastHitResult: result,
       ...(state.currentTurn === 'left'
         ? { rightArcher: updatedTarget }
         : { leftArcher: updatedTarget }),
@@ -155,7 +200,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Check turn limit
     if (state.turnNumber >= GAME_CONSTANTS.MAX_TURNS) {
-      // Determine winner by remaining health, then by who shot more accurately
       const leftHealth = state.leftArcher?.health ?? 0;
       const rightHealth = state.rightArcher?.health ?? 0;
 
@@ -164,36 +208,82 @@ export const useGameStore = create<GameStore>((set, get) => ({
       } else if (rightHealth > leftHealth) {
         get().endMatch(state.rightArcher!.modelId, 'timeout');
       } else {
-        // Tie - left wins by default (they went first)
         get().endMatch(state.leftArcher!.modelId, 'timeout');
       }
       return;
     }
 
     // Switch turns
-    const nextTurn = state.currentTurn === 'left' ? 'right' : 'left';
-    const nextTurnNumber = nextTurn === 'left' ? state.turnNumber + 1 : state.turnNumber;
+    const nextTurnSide = state.currentTurn === 'left' ? 'right' : 'left';
+    const nextTurnNumber = nextTurnSide === 'left' ? state.turnNumber + 1 : state.turnNumber;
 
     set({
-      currentTurn: nextTurn,
+      currentTurn: nextTurnSide,
       turnNumber: nextTurnNumber,
       phase: 'thinking',
+      cameraMode: nextTurnSide === 'left' ? 'left-archer' : 'right-archer',
+      lastHitResult: null,
     });
   },
 
   endMatch: (winner: string, reason: 'headshot' | 'bodyshot' | 'timeout') => {
+    const state = get();
+
     set({
       winner,
       winReason: reason,
       phase: 'finished',
+      cameraMode: 'overview',
     });
+
+    // Record match to leaderboard (async, don't wait)
+    const loser = winner === state.leftArcher?.modelId
+      ? state.rightArcher?.modelId
+      : state.leftArcher?.modelId;
+
+    if (loser && state.matchSetup) {
+      // Count shots per player
+      const winnerShots = state.turns.filter(t => t.modelId === winner).length;
+      const loserShots = state.turns.filter(t => t.modelId === loser).length;
+
+      fetch('/api/leaderboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          winnerId: winner,
+          loserId: loser,
+          winReason: reason,
+          winnerShots,
+          loserShots,
+          distance: state.matchSetup.distance,
+          windSpeed: state.matchSetup.wind.speed,
+          windDirection: state.matchSetup.wind.direction,
+        }),
+      }).catch(err => {
+        console.error('Failed to record match:', err);
+      });
+    }
   },
 
   resetGame: () => {
     set({
       ...initialState,
+      screen: 'game',
+      cameraMode: 'intro',
       currentArrowPath: null,
       thinkingModelId: null,
+      lastHitResult: null,
+    });
+  },
+
+  backToMenu: () => {
+    set({
+      ...initialState,
+      screen: 'menu',
+      cameraMode: 'overview',
+      currentArrowPath: null,
+      thinkingModelId: null,
+      lastHitResult: null,
     });
   },
 
@@ -203,6 +293,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setThinkingModelId: (modelId: string | null) => {
     set({ thinkingModelId: modelId });
+  },
+
+  setLastHitResult: (result: HitResult | null) => {
+    set({ lastHitResult: result });
   },
 }));
 

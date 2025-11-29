@@ -5,7 +5,7 @@
  */
 
 import { useRef, useEffect, useState } from 'react';
-import { Group, Vector3 } from 'three';
+import { Group } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Trail } from '@react-three/drei';
 import { Vector2 } from '@/types/game';
@@ -76,28 +76,35 @@ export function Arrow({ path, modelId, onComplete, speed = 1 }: ArrowProps) {
         color={config.color}
         attenuation={(t) => t * t}
       >
-        <mesh>
-          {/* Arrow shaft */}
-          <cylinderGeometry args={[0.02, 0.02, 0.6, 8]} />
-          <meshStandardMaterial color="#8B4513" />
-        </mesh>
+        {/* Arrow group - all parts aligned horizontally pointing right (+X) */}
+        <group>
+          {/* Arrow shaft - rotated to be horizontal */}
+          <mesh rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.02, 0.02, 0.7, 8]} />
+            <meshStandardMaterial color="#8B4513" />
+          </mesh>
+
+          {/* Arrow head (tip) - pointing right */}
+          <mesh position={[0.4, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
+            <coneGeometry args={[0.06, 0.18, 8]} />
+            <meshStandardMaterial color="#444444" metalness={0.8} roughness={0.3} />
+          </mesh>
+
+          {/* Fletching (feathers) - at the back */}
+          <mesh position={[-0.3, 0.04, 0]} rotation={[0, 0, 0.4]}>
+            <planeGeometry args={[0.12, 0.08]} />
+            <meshStandardMaterial color={config.color} side={2} />
+          </mesh>
+          <mesh position={[-0.3, -0.04, 0]} rotation={[0, 0, -0.4]}>
+            <planeGeometry args={[0.12, 0.08]} />
+            <meshStandardMaterial color={config.color} side={2} />
+          </mesh>
+          <mesh position={[-0.3, 0, 0.04]} rotation={[0.4, 0, 0]}>
+            <planeGeometry args={[0.12, 0.08]} />
+            <meshStandardMaterial color={config.color} side={2} />
+          </mesh>
+        </group>
       </Trail>
-
-      {/* Arrow head */}
-      <mesh position={[0.35, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
-        <coneGeometry args={[0.05, 0.15, 8]} />
-        <meshStandardMaterial color="#666666" />
-      </mesh>
-
-      {/* Fletching */}
-      <mesh position={[-0.25, 0.03, 0]} rotation={[0, 0, 0.3]}>
-        <planeGeometry args={[0.15, 0.06]} />
-        <meshStandardMaterial color={config.color} side={2} />
-      </mesh>
-      <mesh position={[-0.25, -0.03, 0]} rotation={[0, 0, -0.3]}>
-        <planeGeometry args={[0.15, 0.06]} />
-        <meshStandardMaterial color={config.color} side={2} />
-      </mesh>
     </group>
   );
 }
