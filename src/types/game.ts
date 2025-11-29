@@ -43,9 +43,19 @@ export interface Shot {
 }
 
 export type HitResult =
-  | { type: 'miss'; distanceX: number; distanceY: number }
+  | { type: 'miss'; distanceX: number; distanceY: number; fellShort?: boolean }
   | { type: 'body' }
   | { type: 'headshot' };
+
+// Stuck arrow that persists after shot
+export interface StuckArrow {
+  id: string;
+  position: Vector2;
+  angle: number;          // Rotation in radians
+  modelId: string;        // For coloring
+  stuckIn: 'ground' | 'body' | 'head';
+  targetSide?: 'left' | 'right';  // If stuck in archer
+}
 
 export interface Turn {
   turnNumber: number;
@@ -73,9 +83,18 @@ export interface GameState {
   rightArcher: Archer | null;
   currentTurn: 'left' | 'right';
   turnNumber: number;
+  roundNumber: number;           // Each round = both archers shoot once
+  roundFirstShooter: 'left' | 'right';  // Alternates each round
+  shotsThisRound: number;        // 0, 1, or 2 shots completed this round
+  pendingDamage: {               // Damage to apply at end of round
+    left: number;
+    right: number;
+    leftKillingBlow: HitResult | null;   // Track what killed them
+    rightKillingBlow: HitResult | null;
+  };
   turns: Turn[];
-  winner: string | null;   // modelId of winner
-  winReason: 'headshot' | 'bodyshot' | 'timeout' | null;
+  winner: string | null;         // modelId of winner, or 'tie' for mutual kill
+  winReason: 'headshot' | 'bodyshot' | 'timeout' | 'tie' | null;
 }
 
 // === AI Response ===
@@ -92,6 +111,7 @@ export interface ModelStats {
   modelId: string;
   wins: number;
   losses: number;
+  ties: number;              // Mutual kills
   headshots: number;
   bodyshots: number;
   totalShots: number;
@@ -101,11 +121,13 @@ export interface ModelStats {
 export interface MatchRecord {
   id: string;
   timestamp: string;
-  winner: string;
-  loser: string;
+  winner: string | null;     // null for ties
+  loser: string | null;      // null for ties
+  leftModelId?: string;      // For ties, track both participants
+  rightModelId?: string;
   winnerShots: number;
   loserShots: number;
-  winReason: 'headshot' | 'bodyshot' | 'timeout';
+  winReason: 'headshot' | 'bodyshot' | 'timeout' | 'tie';
   conditions: {
     distance: number;
     wind: number;

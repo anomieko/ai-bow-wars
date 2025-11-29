@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Turn-by-turn log showing AI decisions and results
+ * Turn-by-turn log showing AI decisions and results - Modern clean design
  */
 
 import { useGameStore } from '@/lib/game-store';
@@ -24,44 +24,44 @@ export function TurnLog() {
   const currentConfig = currentArcher ? getModelConfig(currentArcher.modelId) : null;
 
   return (
-    <div className="bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 max-h-[50vh] flex flex-col">
-      <h3 className="text-sm font-bold text-gray-400 mb-2 flex items-center gap-2">
+    <div className="bg-black/60 backdrop-blur-md rounded-xl p-4 max-h-[50vh] flex flex-col">
+      <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
         <span>Battle Log</span>
-        <span className="text-xs font-normal">({turns.length} shots)</span>
+        <span className="text-white/20 font-normal normal-case">({turns.length} shots)</span>
       </h3>
 
       {/* Turn history */}
-      <div className="flex-1 overflow-y-auto space-y-1.5 text-xs">
+      <div className="flex-1 overflow-y-auto space-y-2 text-xs">
         {[...turns].reverse().slice(0, 10).map((turn) => {
           const config = getModelConfig(turn.modelId);
 
           return (
             <div
               key={`${turn.turnNumber}-${turn.modelId}`}
-              className="p-2 rounded bg-gray-800/80"
+              className="p-3 rounded-lg bg-white/5"
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span>{config.icon}</span>
-                  <span className="text-gray-500">#{turn.turnNumber}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{config.icon}</span>
+                  <span className="text-white/30">#{turn.turnNumber}</span>
                 </div>
                 <span
-                  className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                  className={`px-2 py-0.5 rounded text-xs font-bold ${
                     turn.result.type === 'headshot'
-                      ? 'bg-red-600 text-white'
+                      ? 'bg-red-500/80 text-white'
                       : turn.result.type === 'body'
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-700 text-gray-400'
+                        ? 'bg-amber-500/80 text-white'
+                        : 'bg-white/10 text-white/50'
                   }`}
                 >
                   {formatHitResult(turn.result)}
                 </span>
               </div>
-              <div className="text-gray-500 mt-0.5 flex items-center gap-2">
+              <div className="text-white/40 mt-1 flex items-center gap-2">
                 <span>{turn.shot.angle.toFixed(1)}° @ {turn.shot.power.toFixed(0)}%</span>
               </div>
               {turn.shot.reasoning && (
-                <div className="text-gray-600 mt-1 italic truncate" title={turn.shot.reasoning}>
+                <div className="text-white/30 mt-1 italic truncate text-[11px]" title={turn.shot.reasoning}>
                   "{turn.shot.reasoning}"
                 </div>
               )}
@@ -70,13 +70,13 @@ export function TurnLog() {
         })}
 
         {turns.length === 0 && (
-          <div className="text-center text-gray-600 py-4">
+          <div className="text-center text-white/30 py-6">
             Waiting for first shot...
           </div>
         )}
 
         {turns.length > 10 && (
-          <div className="text-center text-gray-600 py-1 text-xs">
+          <div className="text-center text-white/30 py-1 text-xs">
             +{turns.length - 10} more shots
           </div>
         )}

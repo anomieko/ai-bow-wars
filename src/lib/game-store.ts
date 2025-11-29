@@ -12,6 +12,7 @@ import {
   Shot,
   HitResult,
   Vector2,
+  StuckArrow,
   GAME_CONSTANTS,
 } from '@/types/game';
 import { generateMatchSetup } from './physics';
@@ -39,9 +40,13 @@ interface GameStore extends GameState {
   setPhase: (phase: GamePhase) => void;
   executeShot: (shot: Shot, arrowPath: Vector2[], result: HitResult) => void;
   nextTurn: () => void;
-  endMatch: (winner: string, reason: 'headshot' | 'bodyshot' | 'timeout') => void;
+  endMatch: (winner: string | null, reason: 'headshot' | 'bodyshot' | 'timeout' | 'tie') => void;
   resetGame: () => void;
   backToMenu: () => void;
+
+  // Round-based system - track if first shot would have killed
+  firstShotWouldKill: boolean;
+  setFirstShotWouldKill: (value: boolean) => void;
 
   // Current arrow animation state
   currentArrowPath: Vector2[] | null;
@@ -54,6 +59,10 @@ interface GameStore extends GameState {
   // Last hit result for effects
   lastHitResult: HitResult | null;
   setLastHitResult: (result: HitResult | null) => void;
+
+  // Stuck arrows that persist through the match
+  stuckArrows: StuckArrow[];
+  addStuckArrow: (arrow: StuckArrow) => void;
 }
 
 const initialState: GameState = {
@@ -63,6 +72,15 @@ const initialState: GameState = {
   rightArcher: null,
   currentTurn: 'left',
   turnNumber: 0,
+  roundNumber: 0,
+  roundFirstShooter: 'left',
+  shotsThisRound: 0,
+  pendingDamage: {
+    left: 0,
+    right: 0,
+    leftKillingBlow: null,
+    rightKillingBlow: null,
+  },
   turns: [],
   winner: null,
   winReason: null,
@@ -75,6 +93,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   currentArrowPath: null,
   thinkingModelId: null,
   lastHitResult: null,
+  firstShotWouldKill: false,
+  stuckArrows: [],
 
   setScreen: (screen: AppScreen) => {
     set({ screen });
@@ -113,6 +133,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       rightArcher,
       phase: 'ready',
       turnNumber: 0,
+      roundNumber: 0,
+      roundFirstShooter: 'left',
+      shotsThisRound: 0,
+      pendingDamage: { left: 0, right: 0, leftKillingBlow: null, rightKillingBlow: null },
       turns: [],
       currentTurn: 'left',
       winner: null,
@@ -120,6 +144,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       screen: 'game',
       cameraMode: 'intro',
       lastHitResult: null,
+      firstShotWouldKill: false,
     });
   },
 
@@ -136,8 +161,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       phase: 'thinking',
       turnNumber: 1,
+      roundNumber: 1,
+      roundFirstShooter: 'left',
+      shotsThisRound: 0,
       currentTurn: 'left',
       cameraMode: 'left-archer',
+      pendingDamage: { left: 0, right: 0, leftKillingBlow: null, rightKillingBlow: null },
+      firstShotWouldKill: false,
     });
   },
 
@@ -149,6 +179,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get();
     const currentArcher = state.currentTurn === 'left' ? state.leftArcher : state.rightArcher;
     const targetArcher = state.currentTurn === 'left' ? state.rightArcher : state.leftArcher;
+    const targetSide = state.currentTurn === 'left' ? 'right' : 'left';
 
     if (!currentArcher || !targetArcher) return;
 
@@ -161,72 +192,138 @@ export const useGameStore = create<GameStore>((set, get) => ({
       timestamp: new Date().toISOString(),
     };
 
-    // Update health if hit
-    let updatedTargetHealth = targetArcher.health;
+    // Calculate damage to accumulate (NOT applied yet - applied at round end)
+    let damage = 0;
     if (result.type === 'headshot') {
-      updatedTargetHealth = 0;
+      damage = GAME_CONSTANTS.MAX_HEALTH; // Instant kill damage
     } else if (result.type === 'body') {
-      updatedTargetHealth -= 1;
+      damage = 1;
     }
 
-    const updatedTarget: Archer = {
-      ...targetArcher,
-      health: updatedTargetHealth,
-    };
+    // Update pending damage
+    const newPendingDamage = { ...state.pendingDamage };
+    if (targetSide === 'left') {
+      newPendingDamage.left += damage;
+      if (newPendingDamage.left >= state.leftArcher!.health && !newPendingDamage.leftKillingBlow) {
+        newPendingDamage.leftKillingBlow = result;
+      }
+    } else {
+      newPendingDamage.right += damage;
+      if (newPendingDamage.right >= state.rightArcher!.health && !newPendingDamage.rightKillingBlow) {
+        newPendingDamage.rightKillingBlow = result;
+      }
+    }
+
+    // Check if this is the first shot of the round and it would kill
+    const isFirstShotOfRound = state.shotsThisRound === 0;
+    const wouldKill = damage > 0 && (
+      (targetSide === 'left' && newPendingDamage.left >= state.leftArcher!.health) ||
+      (targetSide === 'right' && newPendingDamage.right >= state.rightArcher!.health)
+    );
 
     set({
       turns: [...state.turns, turn],
       lastHitResult: result,
-      ...(state.currentTurn === 'left'
-        ? { rightArcher: updatedTarget }
-        : { leftArcher: updatedTarget }),
+      shotsThisRound: state.shotsThisRound + 1,
+      pendingDamage: newPendingDamage,
+      firstShotWouldKill: isFirstShotOfRound && wouldKill,
     });
+  },
+
+  setFirstShotWouldKill: (value: boolean) => {
+    set({ firstShotWouldKill: value });
   },
 
   nextTurn: () => {
     const state = get();
-    const targetArcher = state.currentTurn === 'left' ? state.rightArcher : state.leftArcher;
-    const currentArcher = state.currentTurn === 'left' ? state.leftArcher : state.rightArcher;
 
-    if (!targetArcher || !currentArcher) return;
+    if (!state.leftArcher || !state.rightArcher) return;
 
-    // Check if target is dead
-    if (targetArcher.health <= 0) {
-      const lastTurn = state.turns[state.turns.length - 1];
-      const winReason = lastTurn?.result.type === 'headshot' ? 'headshot' : 'bodyshot';
-      get().endMatch(currentArcher.modelId, winReason);
+    // Round has 2 shots - check if we need second shot or round is complete
+    if (state.shotsThisRound < 2) {
+      // First shot done, now second archer shoots
+      const secondShooter = state.roundFirstShooter === 'left' ? 'right' : 'left';
+
+      set({
+        currentTurn: secondShooter,
+        turnNumber: state.turnNumber + 1,
+        phase: 'thinking',
+        cameraMode: secondShooter === 'left' ? 'left-archer' : 'right-archer',
+        lastHitResult: null,
+        thinkingModelId: null,
+      });
       return;
     }
 
-    // Check turn limit
-    if (state.turnNumber >= GAME_CONSTANTS.MAX_TURNS) {
-      const leftHealth = state.leftArcher?.health ?? 0;
-      const rightHealth = state.rightArcher?.health ?? 0;
+    // Round complete - apply pending damage
+    const { pendingDamage } = state;
+    const newLeftHealth = Math.max(0, state.leftArcher.health - pendingDamage.left);
+    const newRightHealth = Math.max(0, state.rightArcher.health - pendingDamage.right);
 
-      if (leftHealth > rightHealth) {
-        get().endMatch(state.leftArcher!.modelId, 'timeout');
-      } else if (rightHealth > leftHealth) {
-        get().endMatch(state.rightArcher!.modelId, 'timeout');
+    const leftDead = newLeftHealth <= 0;
+    const rightDead = newRightHealth <= 0;
+
+    // Update health
+    set({
+      leftArcher: { ...state.leftArcher, health: newLeftHealth },
+      rightArcher: { ...state.rightArcher, health: newRightHealth },
+    });
+
+    // Check for match end
+    if (leftDead && rightDead) {
+      // TIE - both killed each other this round!
+      get().endMatch(null, 'tie');
+      return;
+    }
+
+    if (leftDead) {
+      // Right wins
+      const reason = pendingDamage.leftKillingBlow?.type === 'headshot' ? 'headshot' : 'bodyshot';
+      get().endMatch(state.rightArcher.modelId, reason);
+      return;
+    }
+
+    if (rightDead) {
+      // Left wins
+      const reason = pendingDamage.rightKillingBlow?.type === 'headshot' ? 'headshot' : 'bodyshot';
+      get().endMatch(state.leftArcher.modelId, reason);
+      return;
+    }
+
+    // Check round/turn limit (MAX_TURNS is total individual shots, so MAX_TURNS/2 rounds)
+    const maxRounds = Math.floor(GAME_CONSTANTS.MAX_TURNS / 2);
+    if (state.roundNumber >= maxRounds) {
+      // Timeout - whoever has more health wins
+      if (newLeftHealth > newRightHealth) {
+        get().endMatch(state.leftArcher.modelId, 'timeout');
+      } else if (newRightHealth > newLeftHealth) {
+        get().endMatch(state.rightArcher.modelId, 'timeout');
       } else {
-        get().endMatch(state.leftArcher!.modelId, 'timeout');
+        // Equal health = tie
+        get().endMatch(null, 'tie');
       }
       return;
     }
 
-    // Switch turns
-    const nextTurnSide = state.currentTurn === 'left' ? 'right' : 'left';
-    const nextTurnNumber = nextTurnSide === 'left' ? state.turnNumber + 1 : state.turnNumber;
+    // Start next round - alternate first shooter
+    const nextFirstShooter = state.roundFirstShooter === 'left' ? 'right' : 'left';
 
     set({
-      currentTurn: nextTurnSide,
-      turnNumber: nextTurnNumber,
+      roundNumber: state.roundNumber + 1,
+      roundFirstShooter: nextFirstShooter,
+      shotsThisRound: 0,
+      pendingDamage: { left: 0, right: 0, leftKillingBlow: null, rightKillingBlow: null },
+      currentTurn: nextFirstShooter,
+      turnNumber: state.turnNumber + 1,
       phase: 'thinking',
-      cameraMode: nextTurnSide === 'left' ? 'left-archer' : 'right-archer',
+      cameraMode: nextFirstShooter === 'left' ? 'left-archer' : 'right-archer',
       lastHitResult: null,
+      firstShotWouldKill: false,
+      thinkingModelId: null,
     });
   },
 
-  endMatch: (winner: string, reason: 'headshot' | 'bodyshot' | 'timeout') => {
+  endMatch: (winner: string | null, reason: 'headshot' | 'bodyshot' | 'timeout' | 'tie') => {
     const state = get();
 
     set({
@@ -237,31 +334,55 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
 
     // Record match to leaderboard (async, don't wait)
-    const loser = winner === state.leftArcher?.modelId
-      ? state.rightArcher?.modelId
-      : state.leftArcher?.modelId;
+    if (state.matchSetup && state.leftArcher && state.rightArcher) {
+      const leftShots = state.turns.filter(t => t.modelId === state.leftArcher!.modelId).length;
+      const rightShots = state.turns.filter(t => t.modelId === state.rightArcher!.modelId).length;
 
-    if (loser && state.matchSetup) {
-      // Count shots per player
-      const winnerShots = state.turns.filter(t => t.modelId === winner).length;
-      const loserShots = state.turns.filter(t => t.modelId === loser).length;
+      if (reason === 'tie') {
+        // Tie - record both participants
+        fetch('/api/leaderboard', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            winnerId: null,
+            loserId: null,
+            leftModelId: state.leftArcher.modelId,
+            rightModelId: state.rightArcher.modelId,
+            winReason: 'tie',
+            winnerShots: leftShots,
+            loserShots: rightShots,
+            distance: state.matchSetup.distance,
+            windSpeed: state.matchSetup.wind.speed,
+            windDirection: state.matchSetup.wind.direction,
+          }),
+        }).catch(err => {
+          console.error('Failed to record match:', err);
+        });
+      } else {
+        // Normal win
+        const loser = winner === state.leftArcher.modelId
+          ? state.rightArcher.modelId
+          : state.leftArcher.modelId;
+        const winnerShots = state.turns.filter(t => t.modelId === winner).length;
+        const loserShots = state.turns.filter(t => t.modelId === loser).length;
 
-      fetch('/api/leaderboard', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          winnerId: winner,
-          loserId: loser,
-          winReason: reason,
-          winnerShots,
-          loserShots,
-          distance: state.matchSetup.distance,
-          windSpeed: state.matchSetup.wind.speed,
-          windDirection: state.matchSetup.wind.direction,
-        }),
-      }).catch(err => {
-        console.error('Failed to record match:', err);
-      });
+        fetch('/api/leaderboard', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            winnerId: winner,
+            loserId: loser,
+            winReason: reason,
+            winnerShots,
+            loserShots,
+            distance: state.matchSetup.distance,
+            windSpeed: state.matchSetup.wind.speed,
+            windDirection: state.matchSetup.wind.direction,
+          }),
+        }).catch(err => {
+          console.error('Failed to record match:', err);
+        });
+      }
     }
   },
 
@@ -273,6 +394,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       currentArrowPath: null,
       thinkingModelId: null,
       lastHitResult: null,
+      firstShotWouldKill: false,
+      stuckArrows: [],
     });
   },
 
@@ -284,6 +407,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       currentArrowPath: null,
       thinkingModelId: null,
       lastHitResult: null,
+      firstShotWouldKill: false,
+      stuckArrows: [],
     });
   },
 
@@ -297,6 +422,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setLastHitResult: (result: HitResult | null) => {
     set({ lastHitResult: result });
+  },
+
+  addStuckArrow: (arrow: StuckArrow) => {
+    set((state) => ({ stuckArrows: [...state.stuckArrows, arrow] }));
   },
 }));
 

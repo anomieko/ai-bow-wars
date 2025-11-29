@@ -55,18 +55,30 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     // Validate required fields
-    const { winnerId, loserId, winReason, winnerShots, loserShots, distance, windSpeed, windDirection } = body;
+    const { winnerId, loserId, leftModelId, rightModelId, winReason, winnerShots, loserShots, distance, windSpeed, windDirection } = body;
 
-    if (!winnerId || !loserId || !winReason) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
-        { status: 400 }
-      );
+    // For ties, we need leftModelId and rightModelId. For wins, we need winnerId and loserId.
+    if (winReason === 'tie') {
+      if (!leftModelId || !rightModelId) {
+        return NextResponse.json(
+          { success: false, error: 'Missing model IDs for tie' },
+          { status: 400 }
+        );
+      }
+    } else {
+      if (!winnerId || !loserId || !winReason) {
+        return NextResponse.json(
+          { success: false, error: 'Missing required fields' },
+          { status: 400 }
+        );
+      }
     }
 
     await recordMatch({
-      winnerId,
-      loserId,
+      winnerId: winnerId || null,
+      loserId: loserId || null,
+      leftModelId,
+      rightModelId,
       winReason,
       winnerShots: winnerShots || 0,
       loserShots: loserShots || 0,

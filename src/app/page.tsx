@@ -8,6 +8,7 @@ import { GameControls } from '@/components/ui/GameControls';
 import { TurnLog } from '@/components/ui/TurnLog';
 import { InfoScreen } from '@/components/ui/InfoScreen';
 import { LeaderboardScreen } from '@/components/ui/LeaderboardScreen';
+import { DebugPanel } from '@/components/ui/DebugPanel';
 import { useGameStore } from '@/lib/game-store';
 
 export default function Home() {
@@ -33,19 +34,7 @@ export default function Home() {
 
   // Custom model selection
   if (screen === 'custom-select') {
-    return (
-      <div className="min-h-screen bg-gray-900 p-8">
-        <div className="max-w-2xl mx-auto">
-          <button
-            onClick={() => setScreen('menu')}
-            className="mb-8 text-gray-400 hover:text-white flex items-center gap-2"
-          >
-            <span>←</span> Back to Menu
-          </button>
-          <ModelSelector />
-        </div>
-      </div>
-    );
+    return <ModelSelector />;
   }
 
   // Info screen
@@ -75,6 +64,9 @@ export default function Home() {
         <div className="absolute top-20 right-4 w-80">
           <TurnLog />
         </div>
+
+        {/* Debug panel - only visible in mock/test mode */}
+        <DebugPanel />
 
         {/* Game loop handler */}
         <GameLoop />

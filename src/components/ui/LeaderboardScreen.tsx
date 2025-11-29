@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Leaderboard screen showing AI rankings from Vercel KV
+ * Leaderboard screen - Modern clean design
  */
 
 import { useEffect, useState } from 'react';
@@ -15,20 +15,30 @@ interface ModelStats {
   modelId: string;
   wins: number;
   losses: number;
+  ties: number;
   headshots: number;
   bodyshots: number;
   totalShots: number;
 }
 
+interface RecentMatch {
+  id: string;
+  timestamp: string;
+  winnerId: string | null;
+  loserId: string | null;
+  leftModelId?: string;
+  rightModelId?: string;
+  winReason: 'headshot' | 'bodyshot' | 'timeout' | 'tie';
+  winnerShots?: number;
+  loserShots?: number;
+  distance?: number;
+  windSpeed?: number;
+  windDirection?: 'left' | 'right';
+}
+
 interface LeaderboardData {
   stats: Record<string, ModelStats>;
-  recentMatches: Array<{
-    id: string;
-    timestamp: string;
-    winnerId: string;
-    loserId: string;
-    winReason: string;
-  }>;
+  recentMatches: RecentMatch[];
   totalMatches: number;
 }
 
@@ -48,7 +58,6 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
           setData(json.data);
           setIsMock(json.mock || false);
         } else if (json.mock) {
-          // No KV configured, show empty state
           setIsMock(true);
           setData(null);
         }
@@ -66,236 +75,255 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
   // Sort models by win rate
   const sortedStats = data
     ? Object.values(data.stats)
-        .map((stats) => ({
-          ...stats,
-          winRate: stats.wins + stats.losses > 0
-            ? stats.wins / (stats.wins + stats.losses)
-            : 0,
-        }))
+        .map((stats) => {
+          const totalGames = stats.wins + stats.losses + stats.ties;
+          return {
+            ...stats,
+            totalGames,
+            winRate: totalGames > 0 ? (stats.wins + stats.ties * 0.5) / totalGames : 0,
+          };
+        })
         .sort((a, b) => {
-          // Sort by win rate, then by total wins
           if (b.winRate !== a.winRate) return b.winRate - a.winRate;
-          return b.wins - a.wins;
+          if (b.wins !== a.wins) return b.wins - a.wins;
+          return b.totalGames - a.totalGames;
         })
     : [];
 
   const totalMatches = data?.totalMatches || 0;
   const totalHeadshots = sortedStats.reduce((sum, s) => sum + s.headshots, 0);
+  const totalTies = sortedStats.reduce((sum, s) => sum + s.ties, 0);
 
   return (
-    <div className="min-h-screen bg-gray-900 p-8">
-      <div className="max-w-3xl mx-auto">
-        {/* Back button */}
-        <button
-          onClick={onBack}
-          className="mb-8 text-gray-400 hover:text-white flex items-center gap-2"
-        >
-          <span>←</span> Back to Menu
-        </button>
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
+      {/* Header */}
+      <div className="px-4 py-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-white/50 hover:text-white transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span>Back</span>
+          </button>
+          <h1 className="text-xl font-bold text-white">Rankings</h1>
+          <div className="w-16" />
+        </div>
+      </div>
 
-        <h1 className="text-4xl font-bold text-white mb-2">Leaderboard</h1>
-        <p className="text-gray-400 mb-4">AI model rankings based on win rate</p>
-
-        {/* Mock mode warning */}
-        {isMock && (
-          <div className="mb-6 p-4 bg-yellow-900/50 border border-yellow-600 rounded-lg">
-            <p className="text-yellow-400 text-sm">
-              {data === null
-                ? 'Leaderboard database not configured. Results will not be saved.'
-                : 'Running in test mode. Match results are not being recorded.'}
-            </p>
-          </div>
-        )}
-
-        {/* Loading state */}
-        {loading && (
-          <div className="text-center py-16">
-            <div className="text-gray-400 animate-pulse">Loading leaderboard...</div>
-          </div>
-        )}
-
-        {/* Error state */}
-        {error && (
-          <div className="text-center py-16">
-            <div className="text-red-400">{error}</div>
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!loading && !error && sortedStats.length > 0 && totalMatches === 0 && (
-          <div className="text-center py-16 bg-gray-800 rounded-lg">
-            <div className="text-6xl mb-4">🏹</div>
-            <div className="text-xl text-white mb-2">No matches yet!</div>
-            <div className="text-gray-400">
-              Play some matches with real AI models to populate the leaderboard.
+      <div className="px-4 pb-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Mock mode warning */}
+          {isMock && (
+            <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-black/40 backdrop-blur-sm rounded-full">
+              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+              <span className="text-yellow-200 text-sm font-medium">
+                {data === null ? 'Database not configured' : 'Test mode'}
+              </span>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Leaderboard table */}
-        {!loading && !error && sortedStats.length > 0 && (
-          <>
-            <div className="bg-gray-800 rounded-lg overflow-hidden">
-              {/* Header */}
-              <div className="grid grid-cols-12 gap-4 p-4 bg-gray-700 text-gray-300 text-sm font-semibold">
-                <div className="col-span-1 text-center">#</div>
-                <div className="col-span-5">Model</div>
-                <div className="col-span-2 text-center">Wins</div>
-                <div className="col-span-2 text-center">Losses</div>
-                <div className="col-span-2 text-center">Win Rate</div>
+          {/* Loading */}
+          {loading && (
+            <div className="text-center py-20">
+              <div className="inline-flex items-center gap-3 text-white/50">
+                <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                Loading...
               </div>
+            </div>
+          )}
 
-              {/* Rows */}
+          {/* Error */}
+          {error && (
+            <div className="text-center py-20">
+              <div className="text-red-400">{error}</div>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!loading && !error && sortedStats.length > 0 && totalMatches === 0 && (
+            <div className="text-center py-20">
+              <div className="text-6xl mb-4">🏹</div>
+              <div className="text-xl text-white font-semibold mb-2">No matches yet</div>
+              <div className="text-white/50">Start a battle to see rankings</div>
+            </div>
+          )}
+
+          {/* Stats row */}
+          {!loading && !error && (
+            <div className="flex items-center justify-center gap-8 mb-8 text-center">
+              <div>
+                <div className="text-3xl font-bold text-white">{totalMatches}</div>
+                <div className="text-white/40 text-sm">Matches</div>
+              </div>
+              <div className="w-px h-10 bg-white/10" />
+              <div>
+                <div className="text-3xl font-bold text-red-400">{totalHeadshots}</div>
+                <div className="text-white/40 text-sm">Headshots</div>
+              </div>
+              <div className="w-px h-10 bg-white/10" />
+              <div>
+                <div className="text-3xl font-bold text-white">{MODELS.length}</div>
+                <div className="text-white/40 text-sm">Models</div>
+              </div>
+            </div>
+          )}
+
+          {/* Leaderboard */}
+          {!loading && !error && sortedStats.length > 0 && (
+            <div className="space-y-2">
               {sortedStats.map((stats, index) => {
                 const config = getModelConfig(stats.modelId);
-                const winRate = stats.wins + stats.losses > 0
-                  ? ((stats.wins / (stats.wins + stats.losses)) * 100).toFixed(1)
-                  : '0.0';
-                const isTop3 = index < 3;
-                const hasMatches = stats.wins + stats.losses > 0;
+                const rating = (stats.winRate * 100).toFixed(0);
+                const hasMatches = stats.totalGames > 0;
 
                 return (
                   <div
                     key={stats.modelId}
-                    className={`grid grid-cols-12 gap-4 p-4 border-b border-gray-700 items-center ${
-                      isTop3 && hasMatches ? 'bg-gray-750' : ''
-                    } ${!hasMatches ? 'opacity-50' : ''}`}
+                    className={`flex items-center gap-4 p-4 rounded-xl transition-all ${
+                      !hasMatches ? 'opacity-40' : 'hover:bg-white/5'
+                    }`}
+                    style={{
+                      backgroundColor: hasMatches && index < 3 ? `${config.color}10` : 'rgba(255,255,255,0.03)',
+                    }}
                   >
                     {/* Rank */}
-                    <div className="col-span-1 text-center">
+                    <div className="w-8 text-center">
                       {hasMatches ? (
                         <>
                           {index === 0 && <span className="text-2xl">🥇</span>}
                           {index === 1 && <span className="text-2xl">🥈</span>}
                           {index === 2 && <span className="text-2xl">🥉</span>}
-                          {index > 2 && <span className="text-gray-400">{index + 1}</span>}
+                          {index > 2 && <span className="text-white/30 font-medium">{index + 1}</span>}
                         </>
                       ) : (
-                        <span className="text-gray-600">-</span>
+                        <span className="text-white/20">-</span>
                       )}
                     </div>
 
                     {/* Model */}
-                    <div className="col-span-5 flex items-center gap-3">
-                      <span className="text-2xl">{config.icon}</span>
+                    <div className="flex items-center gap-3 flex-1">
+                      <span className="text-3xl">{config.icon}</span>
                       <div>
                         <div className="text-white font-semibold">{config.name}</div>
-                        <div className="text-xs text-gray-500">{config.provider}</div>
+                        <div className="text-sm text-white/40">{config.provider}</div>
                       </div>
                     </div>
 
-                    {/* Wins */}
-                    <div className="col-span-2 text-center text-green-400 font-semibold">
-                      {stats.wins}
+                    {/* Record */}
+                    <div className="text-center px-4">
+                      <div className="text-sm">
+                        <span className="text-emerald-400 font-semibold">{stats.wins}</span>
+                        <span className="text-white/20 mx-1">-</span>
+                        <span className="text-red-400">{stats.losses}</span>
+                        {stats.ties > 0 && (
+                          <>
+                            <span className="text-white/20 mx-1">-</span>
+                            <span className="text-white/40">{stats.ties}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="text-xs text-white/30">W-L</div>
                     </div>
 
-                    {/* Losses */}
-                    <div className="col-span-2 text-center text-red-400">
-                      {stats.losses}
-                    </div>
-
-                    {/* Win Rate */}
-                    <div className="col-span-2 text-center">
-                      <span
-                        className={`font-bold ${
-                          !hasMatches
-                            ? 'text-gray-500'
-                            : parseFloat(winRate) >= 60
-                              ? 'text-green-400'
-                              : parseFloat(winRate) >= 40
-                                ? 'text-yellow-400'
-                                : 'text-red-400'
-                        }`}
-                      >
-                        {hasMatches ? `${winRate}%` : '-'}
-                      </span>
+                    {/* Win rate */}
+                    <div className="w-16 text-right">
+                      {hasMatches ? (
+                        <span
+                          className="text-lg font-bold"
+                          style={{
+                            color:
+                              parseFloat(rating) >= 60
+                                ? '#4ade80'
+                                : parseFloat(rating) >= 40
+                                  ? '#facc15'
+                                  : '#f87171',
+                          }}
+                        >
+                          {rating}%
+                        </span>
+                      ) : (
+                        <span className="text-white/20">-</span>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
+          )}
 
-            {/* Stats summary */}
-            <div className="mt-8 grid grid-cols-3 gap-4">
-              <div className="bg-gray-800 p-4 rounded-lg text-center">
-                <div className="text-3xl font-bold text-white">{totalMatches}</div>
-                <div className="text-gray-400 text-sm">Total Matches</div>
-              </div>
-              <div className="bg-gray-800 p-4 rounded-lg text-center">
-                <div className="text-3xl font-bold text-white">{totalHeadshots}</div>
-                <div className="text-gray-400 text-sm">Total Headshots</div>
-              </div>
-              <div className="bg-gray-800 p-4 rounded-lg text-center">
-                <div className="text-3xl font-bold text-white">{MODELS.length}</div>
-                <div className="text-gray-400 text-sm">AI Models</div>
-              </div>
-            </div>
+          {/* Recent matches */}
+          {data && data.recentMatches.length > 0 && (
+            <div className="mt-10">
+              <h2 className="text-white/40 text-xs font-medium uppercase tracking-widest mb-4">Recent Matches</h2>
+              <div className="space-y-2">
+                {data.recentMatches.slice(0, 5).map((match) => {
+                  const isTie = match.winReason === 'tie';
+                  const timeAgo = getTimeAgo(match.timestamp);
 
-            {/* Recent matches */}
-            {data && data.recentMatches.length > 0 && (
-              <div className="mt-8">
-                <h2 className="text-xl font-bold text-white mb-4">Recent Matches</h2>
-                <div className="space-y-2">
-                  {data.recentMatches.slice(0, 5).map((match) => {
-                    const winner = getModelConfig(match.winnerId);
-                    const loser = getModelConfig(match.loserId);
-                    const timeAgo = getTimeAgo(match.timestamp);
-
+                  if (isTie) {
+                    const left = getModelConfig(match.leftModelId || 'unknown');
+                    const right = getModelConfig(match.rightModelId || 'unknown');
                     return (
                       <div
                         key={match.id}
-                        className="bg-gray-800 p-3 rounded-lg flex items-center justify-between"
+                        className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03]"
                       >
-                        <div className="flex items-center gap-2">
-                          <span>{winner.icon}</span>
-                          <span className="text-green-400 font-semibold">{winner.name}</span>
-                          <span className="text-gray-500">defeated</span>
-                          <span className="text-red-400">{loser.name}</span>
-                          <span>{loser.icon}</span>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-xl">{left.icon}</span>
+                          <span className="text-white/80">{left.name}</span>
+                          <span className="text-white/30 px-2">draw</span>
+                          <span className="text-white/80">{right.name}</span>
+                          <span className="text-xl">{right.icon}</span>
                         </div>
-                        <div className="text-right">
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            match.winReason === 'headshot'
-                              ? 'bg-red-900 text-red-300'
-                              : match.winReason === 'bodyshot'
-                                ? 'bg-orange-900 text-orange-300'
-                                : 'bg-gray-700 text-gray-300'
-                          }`}>
-                            {match.winReason}
-                          </span>
-                          <div className="text-xs text-gray-500 mt-1">{timeAgo}</div>
-                        </div>
+                        <div className="text-xs text-white/30">{timeAgo}</div>
                       </div>
                     );
-                  })}
-                </div>
+                  }
+
+                  const winner = getModelConfig(match.winnerId || 'unknown');
+                  const loser = getModelConfig(match.loserId || 'unknown');
+
+                  return (
+                    <div
+                      key={match.id}
+                      className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03]"
+                    >
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-xl">{winner.icon}</span>
+                        <span className="text-emerald-400 font-medium">{winner.name}</span>
+                        <span className="text-white/30">beat</span>
+                        <span className="text-white/50">{loser.name}</span>
+                        <span className="text-xl">{loser.icon}</span>
+                        {match.winReason === 'headshot' && (
+                          <span className="ml-1 text-xs text-red-400">headshot</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-white/30">{timeAgo}</div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </>
-        )}
+            </div>
+          )}
 
-        <p className="text-center text-gray-500 text-sm mt-8">
-          {isMock
-            ? 'Enable real AI models to start recording matches'
-            : 'Leaderboard updates after each match'}
-        </p>
-
-        {/* Back button at bottom */}
-        <button
-          onClick={onBack}
-          className="mt-8 w-full py-4 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors"
-        >
-          Back to Menu
-        </button>
+          {/* Back button */}
+          <button
+            onClick={onBack}
+            className="mt-10 w-full text-white/50 hover:text-white/80 text-sm py-3 transition-colors"
+          >
+            Back to Menu
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-// Helper to format time ago
 function getTimeAgo(timestamp: string): string {
   const seconds = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000);
-
   if (seconds < 60) return 'just now';
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;

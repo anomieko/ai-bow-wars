@@ -31,6 +31,14 @@ export const MODELS: ModelConfig[] = [
     accentColor: '#0d8a6a',
     icon: '🟢',
   },
+  {
+    id: 'openai/gpt-4.1-nano',
+    name: 'GPT-4.1 Nano',
+    provider: 'OpenAI',
+    color: '#74aa9c',
+    accentColor: '#5a9a8a',
+    icon: '💚',
+  },
 
   // === Anthropic ===
   {
@@ -40,6 +48,14 @@ export const MODELS: ModelConfig[] = [
     color: '#d97706',
     accentColor: '#b45309',
     icon: '🟠',
+  },
+  {
+    id: 'anthropic/claude-haiku-4.5',
+    name: 'Claude Haiku 4.5',
+    provider: 'Anthropic',
+    color: '#f59e0b',
+    accentColor: '#d97706',
+    icon: '🌸',
   },
 
   // === Google ===

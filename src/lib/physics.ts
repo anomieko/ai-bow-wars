@@ -72,30 +72,72 @@ export function simulateArrow(
     t += dt;
   }
 
-  // If no hit, calculate miss distance
+  // If no hit, calculate miss distance based on where arrow crossed target's X
   if (!hasHit) {
     const targetX = targetArcher.position.x;
     const targetY = targetArcher.position.y + BODY_HITBOX_HEIGHT / 2; // Center of body
 
-    // Find the closest point on the path to the target
-    let closestDist = Infinity;
-    let closestPoint = path[path.length - 1] || { x, y };
+    // Find where arrow crossed the target's X position
+    let crossingPoint: Vector2 | null = null;
+    let fellShort = true;
+    let maxX = startPos.x; // Track how far the arrow got
 
-    for (const point of path) {
-      const dist = Math.sqrt(
-        Math.pow(point.x - targetX, 2) + Math.pow(point.y - targetY, 2)
-      );
-      if (dist < closestDist) {
-        closestDist = dist;
-        closestPoint = point;
+    for (let i = 1; i < path.length; i++) {
+      const prev = path[i - 1];
+      const curr = path[i];
+
+      // Track max distance reached
+      if (shootingRight) {
+        maxX = Math.max(maxX, curr.x);
+      } else {
+        maxX = Math.min(maxX, curr.x);
+      }
+
+      // Check if we crossed target X (works for both directions)
+      const crossedRight = shootingRight && prev.x <= targetX && curr.x >= targetX;
+      const crossedLeft = !shootingRight && prev.x >= targetX && curr.x <= targetX;
+
+      if (crossedRight || crossedLeft) {
+        // Interpolate Y at target X
+        const t = (targetX - prev.x) / (curr.x - prev.x);
+        crossingPoint = { x: targetX, y: prev.y + t * (curr.y - prev.y) };
+        fellShort = false;
+        break;
       }
     }
 
-    hitResult = {
-      type: 'miss',
-      distanceX: Math.round((closestPoint.x - targetX) * 10) / 10,
-      distanceY: Math.round((closestPoint.y - targetY) * 10) / 10,
-    };
+    if (fellShort) {
+      // Arrow never reached target X - report how short it fell
+      const shortDistance = shootingRight
+        ? targetX - maxX
+        : maxX - targetX;
+
+      // Find the highest point to indicate trajectory type
+      const peakY = Math.max(...path.map(p => p.y));
+      const peakRelativeToTarget = peakY - targetY;
+
+      hitResult = {
+        type: 'miss',
+        distanceX: -Math.round(shortDistance * 10) / 10, // Negative = short
+        distanceY: Math.round(peakRelativeToTarget * 10) / 10, // How high the arc was
+        fellShort: true,
+      };
+    } else if (crossingPoint) {
+      // Arrow crossed target X - report height difference at that point
+      hitResult = {
+        type: 'miss',
+        distanceX: 0, // At target X, so no horizontal error
+        distanceY: Math.round((crossingPoint.y - targetY) * 10) / 10,
+        fellShort: false,
+      };
+    } else {
+      // Fallback (shouldn't happen)
+      hitResult = {
+        type: 'miss',
+        distanceX: 0,
+        distanceY: 0,
+      };
+    }
   }
 
   return {
@@ -173,14 +215,23 @@ export function formatHitResult(result: HitResult): string {
     case 'body':
       return 'Body hit!';
     case 'miss':
-      // Vague feedback for display
-      const parts: string[] = [];
-      if (Math.abs(result.distanceX) > 0.5) {
-        parts.push(result.distanceX > 0 ? 'long' : 'short');
+      // Check if arrow fell short of target
+      if (result.fellShort) {
+        const shortDist = Math.abs(result.distanceX);
+        if (shortDist > 10) return 'Fell way short!';
+        if (shortDist > 5) return 'Fell short';
+        return 'Just short!';
       }
-      if (Math.abs(result.distanceY) > 0.5) {
-        parts.push(result.distanceY > 0 ? 'high' : 'low');
-      }
-      return parts.length > 0 ? `Miss (${parts.join(', ')})` : 'Near miss!';
+
+      // Arrow reached target X - report height at crossing
+      const heightDiff = result.distanceY;
+      if (Math.abs(heightDiff) < 0.5) return 'Near miss!';
+
+      if (heightDiff > 3) return 'Sailed over!';
+      if (heightDiff > 1) return 'Too high';
+      if (heightDiff > 0) return 'Slightly high';
+      if (heightDiff < -3) return 'Way under';
+      if (heightDiff < -1) return 'Too low';
+      return 'Slightly low';
   }
 }

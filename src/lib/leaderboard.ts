@@ -10,6 +10,7 @@ export interface ModelStats {
   modelId: string;
   wins: number;
   losses: number;
+  ties: number;
   headshots: number;
   bodyshots: number;
   totalShots: number;
@@ -18,9 +19,11 @@ export interface ModelStats {
 export interface MatchRecord {
   id: string;
   timestamp: string;
-  winnerId: string;
-  loserId: string;
-  winReason: 'headshot' | 'bodyshot' | 'timeout';
+  winnerId: string | null;      // null for ties
+  loserId: string | null;       // null for ties
+  leftModelId?: string;         // For ties
+  rightModelId?: string;        // For ties
+  winReason: 'headshot' | 'bodyshot' | 'timeout' | 'tie';
   winnerShots: number;
   loserShots: number;
   distance: number;
@@ -57,10 +60,15 @@ export async function getLeaderboard(): Promise<LeaderboardData> {
         modelId: model.id,
         wins: 0,
         losses: 0,
+        ties: 0,
         headshots: 0,
         bodyshots: 0,
         totalShots: 0,
       };
+      // Ensure ties field exists for older data
+      if (allStats[model.id].ties === undefined) {
+        allStats[model.id].ties = 0;
+      }
     }
 
     return {
@@ -77,6 +85,7 @@ export async function getLeaderboard(): Promise<LeaderboardData> {
         modelId: model.id,
         wins: 0,
         losses: 0,
+        ties: 0,
         headshots: 0,
         bodyshots: 0,
         totalShots: 0,
@@ -104,40 +113,56 @@ export async function recordMatch(match: Omit<MatchRecord, 'id' | 'timestamp'>):
     // Get current stats
     const currentStats = await kv.get<Record<string, ModelStats>>(STATS_KEY) || {};
 
-    // Initialize if needed
-    if (!currentStats[match.winnerId]) {
-      currentStats[match.winnerId] = {
-        modelId: match.winnerId,
-        wins: 0,
-        losses: 0,
-        headshots: 0,
-        bodyshots: 0,
-        totalShots: 0,
-      };
-    }
-    if (!currentStats[match.loserId]) {
-      currentStats[match.loserId] = {
-        modelId: match.loserId,
-        wins: 0,
-        losses: 0,
-        headshots: 0,
-        bodyshots: 0,
-        totalShots: 0,
-      };
-    }
+    // Helper to initialize stats for a model
+    const initStats = (modelId: string) => {
+      if (!currentStats[modelId]) {
+        currentStats[modelId] = {
+          modelId,
+          wins: 0,
+          losses: 0,
+          ties: 0,
+          headshots: 0,
+          bodyshots: 0,
+          totalShots: 0,
+        };
+      }
+      // Ensure ties exists for older data
+      if (currentStats[modelId].ties === undefined) {
+        currentStats[modelId].ties = 0;
+      }
+    };
 
-    // Update winner stats
-    currentStats[match.winnerId].wins += 1;
-    currentStats[match.winnerId].totalShots += match.winnerShots;
-    if (match.winReason === 'headshot') {
-      currentStats[match.winnerId].headshots += 1;
-    } else if (match.winReason === 'bodyshot') {
-      currentStats[match.winnerId].bodyshots += 1;
-    }
+    if (match.winReason === 'tie') {
+      // Handle tie - both models get a tie recorded
+      const leftModel = match.leftModelId!;
+      const rightModel = match.rightModelId!;
 
-    // Update loser stats
-    currentStats[match.loserId].losses += 1;
-    currentStats[match.loserId].totalShots += match.loserShots;
+      initStats(leftModel);
+      initStats(rightModel);
+
+      currentStats[leftModel].ties += 1;
+      currentStats[leftModel].totalShots += match.winnerShots; // winnerShots = left shots for ties
+
+      currentStats[rightModel].ties += 1;
+      currentStats[rightModel].totalShots += match.loserShots; // loserShots = right shots for ties
+    } else {
+      // Normal win/loss
+      initStats(match.winnerId!);
+      initStats(match.loserId!);
+
+      // Update winner stats
+      currentStats[match.winnerId!].wins += 1;
+      currentStats[match.winnerId!].totalShots += match.winnerShots;
+      if (match.winReason === 'headshot') {
+        currentStats[match.winnerId!].headshots += 1;
+      } else if (match.winReason === 'bodyshot') {
+        currentStats[match.winnerId!].bodyshots += 1;
+      }
+
+      // Update loser stats
+      currentStats[match.loserId!].losses += 1;
+      currentStats[match.loserId!].totalShots += match.loserShots;
+    }
 
     // Save everything
     await Promise.all([

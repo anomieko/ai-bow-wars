@@ -4,10 +4,14 @@
  * Game loop component - handles AI turns and game progression
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useGameStore } from '@/lib/game-store';
+import { useDebugStore } from '@/lib/debug-store';
 import { simulateArrow } from '@/lib/physics';
 import { Shot } from '@/types/game';
+
+// Timeout for AI API calls (10 seconds)
+const AI_TIMEOUT_MS = 10000;
 
 export function GameLoop() {
   const {
@@ -27,6 +31,22 @@ export function GameLoop() {
     cameraMode,
   } = useGameStore();
 
+  // Debug store for test mode cheats
+  const getDebugHitResult = useDebugStore((s) => s.getDebugHitResult);
+
+  // AbortController to cancel in-flight requests when component unmounts (user clicks Menu)
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Cleanup: abort any in-flight requests when component unmounts
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
+
   const executeAITurn = useCallback(async () => {
     if (!matchSetup || !leftArcher || !rightArcher) return;
 
@@ -35,8 +55,19 @@ export function GameLoop() {
 
     setThinkingModelId(currentArcher.modelId);
 
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
+    // Set up timeout
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    }, AI_TIMEOUT_MS);
+
     try {
-      // Call the AI API
+      // Call the AI API with abort signal
       const response = await fetch('/api/shoot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -49,7 +80,16 @@ export function GameLoop() {
           turns,
           turnNumber,
         }),
+        signal,
       });
+
+      clearTimeout(timeoutId);
+
+      // Check if we were aborted (user clicked Menu)
+      if (signal.aborted) {
+        console.log('AI request aborted (match cancelled)');
+        return;
+      }
 
       const data = await response.json();
 
@@ -74,6 +114,9 @@ export function GameLoop() {
         targetArcher
       );
 
+      // Apply debug overrides if in mock mode (only affects hit result, not path)
+      const finalHitResult = getDebugHitResult(currentTurn, simulation.hitResult);
+
       // Set camera to follow the arrow
       setCameraMode('follow-arrow');
 
@@ -82,8 +125,16 @@ export function GameLoop() {
       setPhase('shooting');
 
       // Execute the shot (update game state)
-      executeShot(shot, simulation.path, simulation.hitResult);
+      executeShot(shot, simulation.path, finalHitResult);
     } catch (error) {
+      clearTimeout(timeoutId);
+
+      // Don't process errors if aborted (user cancelled match)
+      if (signal.aborted) {
+        console.log('AI request aborted (match cancelled or timeout)');
+        return;
+      }
+
       console.error('Failed to execute AI turn:', error);
       // Fallback shot on error
       const fallbackShot: Shot = { angle: 45, power: 70, reasoning: 'Error fallback' };
@@ -94,10 +145,11 @@ export function GameLoop() {
         matchSetup.wind,
         targetArcher
       );
+      const finalHitResult = getDebugHitResult(currentTurn, simulation.hitResult);
       setCameraMode('follow-arrow');
       setCurrentArrowPath(simulation.path);
       setPhase('shooting');
-      executeShot(fallbackShot, simulation.path, simulation.hitResult);
+      executeShot(fallbackShot, simulation.path, finalHitResult);
     } finally {
       setThinkingModelId(null);
     }
@@ -113,6 +165,7 @@ export function GameLoop() {
     setCurrentArrowPath,
     setThinkingModelId,
     setCameraMode,
+    getDebugHitResult,
   ]);
 
   // Auto-start match after intro camera sequence
