@@ -8,6 +8,7 @@ import { GameControls } from '@/components/ui/GameControls';
 import { TurnLog } from '@/components/ui/TurnLog';
 import { InfoScreen } from '@/components/ui/InfoScreen';
 import { LeaderboardScreen } from '@/components/ui/LeaderboardScreen';
+import { CreditsScreen } from '@/components/ui/CreditsScreen';
 import { DebugPanel } from '@/components/ui/DebugPanel';
 import { useGameStore } from '@/lib/game-store';
 
@@ -28,6 +29,7 @@ export default function Home() {
         onStartCustom={() => setScreen('custom-select')}
         onLeaderboard={() => setScreen('leaderboard')}
         onInfo={() => setScreen('info')}
+        onCredits={() => setScreen('credits')}
       />
     );
   }
@@ -45,6 +47,11 @@ export default function Home() {
   // Leaderboard screen
   if (screen === 'leaderboard') {
     return <LeaderboardScreen onBack={() => setScreen('menu')} />;
+  }
+
+  // Credits screen
+  if (screen === 'credits') {
+    return <CreditsScreen onBack={() => setScreen('menu')} />;
   }
 
   // Game screen

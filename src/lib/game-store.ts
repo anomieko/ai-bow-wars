@@ -19,7 +19,7 @@ import { generateMatchSetup } from './physics';
 import { MODELS } from '@/config/models';
 
 // Extended phases to include menu states
-export type AppScreen = 'menu' | 'custom-select' | 'leaderboard' | 'info' | 'game';
+export type AppScreen = 'menu' | 'custom-select' | 'leaderboard' | 'info' | 'credits' | 'game';
 
 // Camera modes for cinematic experience
 export type CameraMode = 'intro' | 'left-archer' | 'right-archer' | 'follow-arrow' | 'result' | 'overview';

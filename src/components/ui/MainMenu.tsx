@@ -13,9 +13,10 @@ interface MainMenuProps {
   onStartCustom: () => void;
   onLeaderboard: () => void;
   onInfo: () => void;
+  onCredits: () => void;
 }
 
-export function MainMenu({ onStartRandom, onStartCustom, onLeaderboard, onInfo }: MainMenuProps) {
+export function MainMenu({ onStartRandom, onStartCustom, onLeaderboard, onInfo, onCredits }: MainMenuProps) {
   const [isMockMode, setIsMockMode] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -90,12 +91,22 @@ export function MainMenu({ onStartRandom, onStartCustom, onLeaderboard, onInfo }
             </button>
           </div>
 
-          <button
-            onClick={onInfo}
-            className="w-full text-white/50 hover:text-white/80 text-sm py-2 transition-colors"
-          >
-            About this evaluation
-          </button>
+          {/* Info links */}
+          <div className="flex items-center justify-center gap-4 pt-2">
+            <button
+              onClick={onInfo}
+              className="text-white/50 hover:text-white/80 text-sm transition-colors"
+            >
+              How it works
+            </button>
+            <span className="text-white/20">|</span>
+            <button
+              onClick={onCredits}
+              className="text-white/50 hover:text-white/80 text-sm transition-colors"
+            >
+              Credits
+            </button>
+          </div>
         </div>
 
         {/* Model showcase */}
