@@ -2,7 +2,7 @@
  * AI prompt templates for the archery game
  */
 
-import { Archer, Turn, Wind, HitResult } from '@/types/game';
+import { Archer, Turn, Wind, HitResult, Vector2 } from '@/types/game';
 
 /**
  * Estimate distance in vague terms
@@ -16,13 +16,53 @@ function getDistanceEstimate(distance: number): string {
 }
 
 /**
- * Estimate wind in vague terms
+ * Estimate wind in vague terms with effect description
  */
 function getWindEstimate(wind: Wind): string {
-  if (wind.speed <= 3) return 'a light breeze';
-  if (wind.speed <= 7) return 'moderate wind';
-  if (wind.speed <= 11) return 'strong wind';
-  return 'very strong wind';
+  if (wind.speed <= 3) return 'a light breeze (minimal effect)';
+  if (wind.speed <= 7) return 'moderate wind (will nudge your arrow)';
+  if (wind.speed <= 11) return 'strong wind (significant drift expected)';
+  return 'very strong wind (major compensation needed)';
+}
+
+/**
+ * Analyze arrow trajectory to get qualitative description
+ */
+function analyzeTrajectory(path: Vector2[], startX: number, targetX: number): {
+  peakPosition: 'early' | 'middle' | 'late';
+  wasDescending: boolean;
+  reachedRatio: number; // 0-1, how far toward target
+} {
+  if (path.length < 2) {
+    return { peakPosition: 'middle', wasDescending: true, reachedRatio: 0 };
+  }
+
+  // Find peak (highest point)
+  let peakIndex = 0;
+  let peakY = path[0].y;
+  for (let i = 1; i < path.length; i++) {
+    if (path[i].y > peakY) {
+      peakY = path[i].y;
+      peakIndex = i;
+    }
+  }
+
+  // Calculate where peak occurred relative to journey
+  const peakRatio = peakIndex / (path.length - 1);
+  const peakPosition: 'early' | 'middle' | 'late' =
+    peakRatio < 0.35 ? 'early' : peakRatio > 0.65 ? 'late' : 'middle';
+
+  // Was arrow descending at end?
+  const lastPoints = path.slice(-3);
+  const wasDescending = lastPoints.length >= 2 &&
+    lastPoints[lastPoints.length - 1].y < lastPoints[0].y;
+
+  // How far did arrow get toward target?
+  const totalDistance = Math.abs(targetX - startX);
+  const arrowDistance = Math.abs(path[path.length - 1].x - startX);
+  const reachedRatio = Math.min(1, arrowDistance / totalDistance);
+
+  return { peakPosition, wasDescending, reachedRatio };
 }
 
 /**
@@ -39,13 +79,13 @@ export function buildArcherPrompt(
   // Filter turns for this archer only
   const myTurns = turns.filter(t => t.modelId === archer.modelId);
 
-  // Build shot history with clear feedback
+  // Build shot history with detailed feedback
   let shotHistory = '';
   if (myTurns.length === 0) {
-    shotHistory = 'This is your first shot. No feedback yet - estimate based on distance!';
+    shotHistory = `This is your first shot. For this distance, try a medium-high arc (around 40-50°) with fairly strong power (around 65-80%). Adjust based on results!`;
   } else {
     shotHistory = myTurns.map(t => {
-      const feedback = formatResultForPrompt(t.result);
+      const feedback = formatResultForPrompt(t.result, t.arrowPath, archer.position.x, opponent.position.x);
       return `Shot ${myTurns.indexOf(t) + 1}: ${t.shot.angle.toFixed(0)}° @ ${t.shot.power.toFixed(0)}% → ${feedback}`;
     }).join('\n');
   }
@@ -62,62 +102,102 @@ SITUATION:
 
 HOW AIMING WORKS:
 - "power" controls distance (more power = arrow goes further)
-- "angle" controls trajectory (higher angle = taller arc, but shorter distance)
-- 45° gives maximum range for any power level
-- Typical shots: 40-50° angle, 60-85% power
+- "angle" controls trajectory (higher angle = taller arc)
+- Around 42-45° usually gives best range
+- Typical good shots: 40-48° angle, 65-80% power
 
 ADJUSTING YOUR AIM:
-- Arrow FELL SHORT? → increase power OR decrease angle (flatter shot)
-- Arrow went OVER target? → decrease angle (lower arc)
-- Arrow went UNDER target? → increase angle (higher arc)
+- Arrow FELL SHORT? → increase power OR decrease angle slightly
+- Arrow went OVER? → decrease angle (flatter trajectory)
+- Arrow went UNDER? → increase angle (higher arc)
 
 YOUR PREVIOUS SHOTS:
 ${shotHistory}
 
 Respond with ONLY this JSON (no other text):
-{"angle": 45, "power": 70, "reasoning": "your brief thought"}`;
+{"angle": 45, "power": 70, "reasoning": "brief thought"}`;
 }
 
 /**
- * Format hit result for AI feedback - clear and actionable
+ * Format hit result for AI feedback - rich qualitative descriptions
  */
-function formatResultForPrompt(result: HitResult): string {
+function formatResultForPrompt(
+  result: HitResult,
+  path?: Vector2[],
+  startX?: number,
+  targetX?: number
+): string {
   switch (result.type) {
     case 'headshot':
-      return 'HEADSHOT! Perfect hit!';
+      return 'HEADSHOT! Perfect hit! Remember this angle and power!';
     case 'body':
-      return 'HIT! Body shot, enemy took damage.';
+      return 'HIT! Body shot - good aim! Fine-tune for headshot.';
     case 'miss':
+      // Get trajectory analysis if we have path data
+      let trajectory: { peakPosition: 'early' | 'middle' | 'late'; wasDescending: boolean; reachedRatio: number } =
+        { peakPosition: 'middle', wasDescending: true, reachedRatio: 0.5 };
+      if (path && startX !== undefined && targetX !== undefined) {
+        trajectory = analyzeTrajectory(path, startX, targetX);
+      }
+
       // Check if arrow fell short
       if (result.fellShort) {
-        const shortDist = Math.abs(result.distanceX);
-        if (shortDist > 10) {
-          return 'FELL WAY SHORT (need much more power or lower angle)';
-        } else if (shortDist > 5) {
-          return 'FELL SHORT (need more power or slightly lower angle)';
+        const reachedPct = trajectory.reachedRatio;
+
+        // Describe how far it got
+        let distanceDesc: string;
+        if (reachedPct < 0.4) {
+          distanceDesc = 'way short (not even halfway there)';
+        } else if (reachedPct < 0.6) {
+          distanceDesc = 'short (landed about halfway to target)';
+        } else if (reachedPct < 0.8) {
+          distanceDesc = 'fell short (got most of the way there)';
+        } else if (reachedPct < 0.95) {
+          distanceDesc = 'just short (almost reached them!)';
         } else {
-          return 'JUST SHORT (need a bit more power)';
+          distanceDesc = 'barely short (so close!)';
         }
+
+        // Describe trajectory shape
+        let trajectoryDesc: string;
+        if (trajectory.peakPosition === 'early') {
+          trajectoryDesc = 'Arrow peaked early and was falling when it landed - try more power or lower angle';
+        } else if (trajectory.peakPosition === 'late' && !trajectory.wasDescending) {
+          trajectoryDesc = 'Arrow was still climbing - too much angle, try flatter';
+        } else {
+          trajectoryDesc = 'Need more power to reach target';
+        }
+
+        return `FELL SHORT: ${distanceDesc}. ${trajectoryDesc}`;
       }
 
       // Arrow reached target X - report height at crossing
       const heightDiff = result.distanceY;
+
+      // Describe trajectory at crossing point
+      let crossingDesc: string;
+      if (trajectory.wasDescending) {
+        crossingDesc = 'arrow was descending';
+      } else {
+        crossingDesc = 'arrow was still rising (too much angle)';
+      }
+
       if (Math.abs(heightDiff) < 0.5) {
-        return 'NEAR MISS! Almost perfect - tiny adjustment needed.';
+        return `NEAR MISS! Incredibly close - ${crossingDesc}. Tiny adjustment needed!`;
       }
 
       if (heightDiff > 3) {
-        return 'SAILED OVER (much lower angle needed)';
+        return `SAILED OVER: Arrow passed way above them (${crossingDesc}). Need much lower angle.`;
       } else if (heightDiff > 1.5) {
-        return 'TOO HIGH (lower angle needed)';
+        return `TOO HIGH: Arrow passed above their head (${crossingDesc}). Lower your angle.`;
       } else if (heightDiff > 0) {
-        return 'SLIGHTLY HIGH (slightly lower angle)';
+        return `SLIGHTLY HIGH: Just over their head (${crossingDesc}). Tiny bit lower angle.`;
       } else if (heightDiff < -3) {
-        return 'WAY UNDER (much higher angle needed)';
+        return `WAY UNDER: Arrow passed well below them (${crossingDesc}). Need higher angle.`;
       } else if (heightDiff < -1.5) {
-        return 'TOO LOW (higher angle needed)';
+        return `TOO LOW: Arrow passed below their body (${crossingDesc}). Raise your angle.`;
       } else {
-        return 'SLIGHTLY LOW (slightly higher angle)';
+        return `SLIGHTLY LOW: Just under them (${crossingDesc}). Tiny bit higher angle.`;
       }
   }
 }

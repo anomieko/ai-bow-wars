@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       const result = await generateText({
         model: modelId,
         prompt,
-        maxTokens: 200,
+        maxOutputTokens: 200,
       });
 
       const parsed = parseAIResponse(result.text);
