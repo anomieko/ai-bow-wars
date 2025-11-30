@@ -26,6 +26,7 @@ export function GameControls() {
     lastHitResult,
     firstShotWouldKill,
     pendingDamage,
+    selectRandomModels,
   } = useGameStore();
 
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -383,19 +384,27 @@ export function GameControls() {
               {winReason === 'bodyshot' && 'Victory by elimination!'}
               {winReason === 'timeout' && 'Most damage after time limit!'}
             </div>
-            <div className="mt-8 flex gap-3 justify-center">
+            <div className="mt-8 flex flex-col gap-3 items-center">
               <button
-                onClick={() => setShowDetailsModal(true)}
-                className="px-6 py-4 bg-white/10 hover:bg-white/20 text-white font-bold text-lg rounded-xl transition-all pointer-events-auto hover:scale-105 active:scale-95"
+                onClick={selectRandomModels}
+                className="w-full px-10 py-5 bg-amber-500 hover:bg-amber-400 text-white font-black text-2xl rounded-xl transition-all pointer-events-auto shadow-[0_10px_40px_-10px_rgba(245,158,11,0.6)] hover:scale-105 active:scale-95"
               >
-                View Details
+                AGAIN!
               </button>
-              <button
-                onClick={backToMenu}
-                className="px-10 py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-lg rounded-xl transition-all pointer-events-auto shadow-[0_10px_40px_-10px_rgba(16,185,129,0.5)] hover:scale-105 active:scale-95"
-              >
-                Back to Menu
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDetailsModal(true)}
+                  className="px-6 py-4 bg-white/10 hover:bg-white/20 text-white font-bold text-lg rounded-xl transition-all pointer-events-auto hover:scale-105 active:scale-95"
+                >
+                  View Details
+                </button>
+                <button
+                  onClick={backToMenu}
+                  className="px-10 py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-lg rounded-xl transition-all pointer-events-auto shadow-[0_10px_40px_-10px_rgba(16,185,129,0.5)] hover:scale-105 active:scale-95"
+                >
+                  Back to Menu
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -468,19 +477,27 @@ export function GameControls() {
               <div className="text-sm text-purple-300 mt-2">
                 {description}
               </div>
-              <div className="mt-8 flex gap-3 justify-center">
+              <div className="mt-8 flex flex-col gap-3 items-center">
                 <button
-                  onClick={() => setShowDetailsModal(true)}
-                  className="px-6 py-4 bg-white/10 hover:bg-white/20 text-white font-bold text-lg rounded-xl transition-all pointer-events-auto hover:scale-105 active:scale-95"
+                  onClick={selectRandomModels}
+                  className="w-full px-10 py-5 bg-purple-500 hover:bg-purple-400 text-white font-black text-2xl rounded-xl transition-all pointer-events-auto shadow-[0_10px_40px_-10px_rgba(168,85,247,0.6)] hover:scale-105 active:scale-95"
                 >
-                  View Details
+                  AGAIN!
                 </button>
-                <button
-                  onClick={backToMenu}
-                  className="px-10 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold text-lg rounded-xl transition-all pointer-events-auto shadow-[0_10px_40px_-10px_rgba(168,85,247,0.5)] hover:scale-105 active:scale-95"
-                >
-                  Back to Menu
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowDetailsModal(true)}
+                    className="px-6 py-4 bg-white/10 hover:bg-white/20 text-white font-bold text-lg rounded-xl transition-all pointer-events-auto hover:scale-105 active:scale-95"
+                  >
+                    View Details
+                  </button>
+                  <button
+                    onClick={backToMenu}
+                    className="px-10 py-4 bg-white/20 hover:bg-white/30 text-white font-bold text-lg rounded-xl transition-all pointer-events-auto hover:scale-105 active:scale-95"
+                  >
+                    Back to Menu
+                  </button>
+                </div>
               </div>
             </div>
           </div>
