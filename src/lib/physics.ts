@@ -30,7 +30,8 @@ export function simulateArrow(
   let vy = velocity * Math.sin(angleRad);
 
   // Wind effect multiplier (scaled for game balance)
-  const windEffect = wind.direction === 'left' ? -wind.speed * 0.1 : wind.speed * 0.1;
+  // 0.25 makes wind a significant factor: wind 7 = ~9m drift, wind 15 = ~18m drift
+  const windEffect = wind.direction === 'left' ? -wind.speed * 0.25 : wind.speed * 0.25;
 
   const path: Vector2[] = [];
   let x = startPos.x;
