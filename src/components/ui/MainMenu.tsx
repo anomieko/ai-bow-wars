@@ -20,16 +20,26 @@ export function MainMenu({ onStartRandom, onStartCustom, onLeaderboard, onInfo, 
   const [isMockMode, setIsMockMode] = useState<boolean | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+
     async function checkMode() {
       try {
-        const res = await fetch('/api/leaderboard');
+        const res = await fetch('/api/leaderboard', { signal: controller.signal });
         const json = await res.json();
         setIsMockMode(json.mock === true || json.data === null);
-      } catch {
-        setIsMockMode(null);
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') {
+          setIsMockMode(null);
+        }
       }
     }
     checkMode();
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   return (

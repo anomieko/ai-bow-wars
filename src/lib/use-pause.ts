@@ -120,23 +120,52 @@ export function usePauseableTimeout(
 /**
  * Hook for creating a pauseable promise that resolves after a delay
  * Returns a function that creates the promise
+ * Properly cleans up all timeouts on component unmount
  */
 export function usePauseableDelay() {
   const isPausedRef = useRef(false);
   const isPaused = useGameStore((s) => s.isPaused);
+  // Track all active timeouts so we can clean them up
+  const activeTimeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set());
+  const isMountedRef = useRef(true);
 
   // Keep ref in sync
   useEffect(() => {
     isPausedRef.current = isPaused;
   }, [isPaused]);
 
+  // Cleanup all timeouts on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Clear all active timeouts
+      activeTimeoutsRef.current.forEach(id => clearTimeout(id));
+      activeTimeoutsRef.current.clear();
+    };
+  }, []);
+
   const createDelay = useCallback((ms: number): Promise<void> => {
     return new Promise((resolve) => {
       let remaining = ms;
       let startTime = Date.now();
-      let timeoutId: NodeJS.Timeout | null = null;
+
+      const scheduleTimeout = (fn: () => void, delay: number): NodeJS.Timeout => {
+        const id = setTimeout(() => {
+          activeTimeoutsRef.current.delete(id);
+          fn();
+        }, delay);
+        activeTimeoutsRef.current.add(id);
+        return id;
+      };
 
       const tick = () => {
+        // Don't continue if unmounted
+        if (!isMountedRef.current) {
+          resolve(); // Resolve immediately to unblock awaiting code
+          return;
+        }
+
         if (isPausedRef.current) {
           // Paused - calculate remaining and wait for unpause
           const elapsed = Date.now() - startTime;
@@ -144,19 +173,23 @@ export function usePauseableDelay() {
 
           // Poll for unpause
           const checkPause = () => {
+            if (!isMountedRef.current) {
+              resolve();
+              return;
+            }
             if (!isPausedRef.current) {
               startTime = Date.now();
-              timeoutId = setTimeout(tick, remaining);
+              scheduleTimeout(tick, remaining);
             } else {
-              timeoutId = setTimeout(checkPause, 100);
+              scheduleTimeout(checkPause, 100);
             }
           };
-          timeoutId = setTimeout(checkPause, 100);
+          scheduleTimeout(checkPause, 100);
         } else if (remaining <= 0) {
           resolve();
         } else {
           startTime = Date.now();
-          timeoutId = setTimeout(() => {
+          scheduleTimeout(() => {
             const elapsed = Date.now() - startTime;
             remaining = Math.max(0, remaining - elapsed);
             tick();

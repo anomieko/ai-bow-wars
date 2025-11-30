@@ -354,32 +354,48 @@ export const useGameStore = create<GameStore>((set, get) => ({
       cameraMode: 'overview',
     });
 
-    // Record match to leaderboard (async, don't wait)
+    // Record match to leaderboard (async with timeout, don't block game)
     if (state.matchSetup && state.leftArcher && state.rightArcher) {
       const leftShots = state.turns.filter(t => t.modelId === state.leftArcher!.modelId).length;
       const rightShots = state.turns.filter(t => t.modelId === state.rightArcher!.modelId).length;
       const matchType = state.matchType; // 'random' or 'custom'
 
+      // Helper to fetch with timeout
+      const fetchWithTimeout = async (body: object) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+        try {
+          await fetch('/api/leaderboard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: controller.signal,
+          });
+        } catch (err) {
+          if (err instanceof Error && err.name === 'AbortError') {
+            console.warn('Leaderboard save timed out (5s)');
+          } else {
+            console.error('Failed to record match:', err);
+          }
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      };
+
       if (reason === 'tie') {
         // Tie - record both participants
-        fetch('/api/leaderboard', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            winnerId: null,
-            loserId: null,
-            leftModelId: state.leftArcher.modelId,
-            rightModelId: state.rightArcher.modelId,
-            winReason: 'tie',
-            winnerShots: leftShots,
-            loserShots: rightShots,
-            distance: state.matchSetup.distance,
-            windSpeed: state.matchSetup.wind.speed,
-            windDirection: state.matchSetup.wind.direction,
-            matchType,
-          }),
-        }).catch(err => {
-          console.error('Failed to record match:', err);
+        fetchWithTimeout({
+          winnerId: null,
+          loserId: null,
+          leftModelId: state.leftArcher.modelId,
+          rightModelId: state.rightArcher.modelId,
+          winReason: 'tie',
+          winnerShots: leftShots,
+          loserShots: rightShots,
+          distance: state.matchSetup.distance,
+          windSpeed: state.matchSetup.wind.speed,
+          windDirection: state.matchSetup.wind.direction,
+          matchType,
         });
       } else {
         // Normal win
@@ -389,22 +405,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const winnerShots = state.turns.filter(t => t.modelId === winner).length;
         const loserShots = state.turns.filter(t => t.modelId === loser).length;
 
-        fetch('/api/leaderboard', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            winnerId: winner,
-            loserId: loser,
-            winReason: reason,
-            winnerShots,
-            loserShots,
-            distance: state.matchSetup.distance,
-            windSpeed: state.matchSetup.wind.speed,
-            windDirection: state.matchSetup.wind.direction,
-            matchType,
-          }),
-        }).catch(err => {
-          console.error('Failed to record match:', err);
+        fetchWithTimeout({
+          winnerId: winner,
+          loserId: loser,
+          winReason: reason,
+          winnerShots,
+          loserShots,
+          distance: state.matchSetup.distance,
+          windSpeed: state.matchSetup.wind.speed,
+          windDirection: state.matchSetup.wind.direction,
+          matchType,
         });
       }
     }

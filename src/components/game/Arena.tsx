@@ -121,6 +121,13 @@ function Scene({ speechBubble }: { speechBubble: SpeechBubbleState }) {
           path={currentArrowPath}
           modelId={useGameStore.getState().currentTurn === 'left' ? leftArcher.modelId : rightArcher.modelId}
           onComplete={() => {
+            // Safety check: only proceed if still in shooting phase
+            const currentPhase = useGameStore.getState().phase;
+            if (currentPhase !== 'shooting') {
+              console.warn('[Arena] Arrow completed but phase is', currentPhase, '- skipping transition');
+              return;
+            }
+
             // Get the current state to create stuck arrow
             const state = useGameStore.getState();
             const path = state.currentArrowPath;

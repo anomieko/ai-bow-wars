@@ -55,10 +55,16 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
     async function fetchLeaderboard() {
       try {
-        const res = await fetch('/api/leaderboard');
+        const res = await fetch('/api/leaderboard', { signal: controller.signal });
         const json = await res.json();
+
+        if (!isMounted) return; // Don't setState if unmounted
 
         if (json.success && json.data) {
           setData(json.data);
@@ -68,14 +74,27 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
           setData(null);
         }
       } catch (err) {
-        console.error('Failed to fetch leaderboard:', err);
-        setError('Failed to load leaderboard');
+        if (!isMounted) return;
+        if (err instanceof Error && err.name === 'AbortError') {
+          setError('Request timed out');
+        } else {
+          console.error('Failed to fetch leaderboard:', err);
+          setError('Failed to load leaderboard');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
     fetchLeaderboard();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   // Sort models by ELO (ranked models first, then unranked by games played)
