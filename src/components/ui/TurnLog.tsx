@@ -35,7 +35,7 @@ export function TurnLog() {
   if (phase === 'setup' || phase === 'ready') return null;
 
   return (
-    <div className="bg-black/70 backdrop-blur-md rounded-xl p-4 max-h-[60vh] flex flex-col">
+    <div className="hidden md:flex bg-black/70 backdrop-blur-md rounded-xl p-4 max-h-[60vh] flex-col">
       <h3 className="text-sm font-bold text-white/60 uppercase tracking-wider mb-3 flex items-center gap-2">
         <span>Battle Log</span>
         <span className="text-white/40 font-normal normal-case">({turns.length} shots)</span>

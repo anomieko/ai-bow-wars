@@ -62,9 +62,17 @@ export function MainMenu({ onStartRandom, onStartCustom, onLeaderboard, onInfo, 
           <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-3">
             <span className="text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.5)]">AI BOW WARS</span>
           </h1>
-          <p className="text-white/80 text-lg md:text-xl font-medium">
-            Language models compete in physics-based archery
-          </p>
+
+          {/* Pitch card */}
+          <div className="max-w-sm md:max-w-none mx-auto mt-4 px-5 md:px-6 py-4 md:py-5 bg-black/40 backdrop-blur-sm rounded-xl border border-white/10 md:inline-block">
+            <p className="text-yellow-400 font-bold text-sm md:text-base lg:text-lg md:whitespace-nowrap mb-2 md:mb-3 leading-tight">
+              The first MvM (Model vs Model) physics reasoning arena for LLMs
+            </p>
+            <p className="text-white/80 text-sm leading-relaxed">
+              Models duel with bows and arrows using only vague feedback.
+              Watch them learn. See who ranks highest.
+            </p>
+          </div>
 
           {isMockMode && (
             <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-black/40 backdrop-blur-sm rounded-full">
@@ -108,7 +116,7 @@ export function MainMenu({ onStartRandom, onStartCustom, onLeaderboard, onInfo, 
               className="bg-yellow-500/20 hover:bg-yellow-500/30 backdrop-blur-sm text-yellow-100 border border-yellow-500/30 hover:border-yellow-500/50 rounded-xl px-4 py-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
               <span className="font-semibold block">How It Works</span>
-              <span className="text-yellow-200/60 text-xs">For AI researchers</span>
+              <span className="text-yellow-200/60 text-xs">The methodology</span>
             </button>
             <button
               onClick={onCredits}
@@ -121,7 +129,7 @@ export function MainMenu({ onStartRandom, onStartCustom, onLeaderboard, onInfo, 
         </div>
 
         {/* Model showcase */}
-        <div className="mt-12 w-full max-w-2xl">
+        <div className="mt-12 pb-16 md:pb-0 w-full max-w-2xl">
           <p className="text-center text-white/40 text-xs font-medium uppercase tracking-widest mb-4">
             {MODELS.length} AI Models
           </p>

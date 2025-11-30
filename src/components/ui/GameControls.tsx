@@ -157,8 +157,8 @@ export function GameControls() {
           </div>
         </div>
 
-        {/* Match info - right aligned */}
-        <div className="flex justify-end">
+        {/* Match info - right aligned (hidden on mobile) */}
+        <div className="hidden md:flex justify-end">
           <div className="bg-black/60 backdrop-blur-md rounded-xl px-4 py-2 text-sm">
             {matchSetup && (
               <div>
