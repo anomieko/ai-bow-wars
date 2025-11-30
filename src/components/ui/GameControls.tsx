@@ -176,7 +176,7 @@ export function GameControls() {
         </div>
       </div>
 
-      {/* Thinking bubble - positioned under the active model's icon in VS bar */}
+      {/* Thinking bubble - white speech bubble with black outline */}
       {isThinking && thinkingConfig && (
         <div className="flex justify-center mt-2 relative z-40">
           <div
@@ -184,25 +184,16 @@ export function GameControls() {
               currentTurn === 'left' ? '-translate-x-16 md:-translate-x-24' : 'translate-x-16 md:translate-x-24'
             }`}
           >
-            {/* Bubble tail pointing up to icon */}
-            <div
-              className="absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45"
-              style={{ backgroundColor: `${thinkingConfig.color}30` }}
-            />
+            {/* Bubble tail pointing up */}
+            <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rotate-45 bg-white border-l-2 border-t-2 border-black/80" />
             {/* Bubble content */}
-            <div
-              className="relative backdrop-blur-md rounded-xl px-4 py-2 flex items-center gap-2"
-              style={{
-                backgroundColor: `${thinkingConfig.color}20`,
-                border: `1px solid ${thinkingConfig.color}40`,
-              }}
-            >
+            <div className="relative bg-white rounded-2xl px-4 py-2 flex items-center gap-2 border-2 border-black/80 shadow-lg">
               <div className="flex gap-1">
-                <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: thinkingConfig.color, animationDelay: '0ms' }} />
-                <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: thinkingConfig.color, animationDelay: '150ms' }} />
-                <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: thinkingConfig.color, animationDelay: '300ms' }} />
+                <div className="w-2 h-2 rounded-full bg-gray-800 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 rounded-full bg-gray-800 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 rounded-full bg-gray-800 animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
-              <span className="text-white/80 text-sm font-medium">Calculating...</span>
+              <span className="text-gray-800 text-sm font-semibold">Thinking...</span>
             </div>
           </div>
         </div>
@@ -211,9 +202,9 @@ export function GameControls() {
       {/* Centered status area - arrow in flight, results */}
       {(phase === 'shooting' || (phase === 'result' && lastHitResult)) && (
         <div className="flex justify-center mt-2">
-          {/* Arrow in flight indicator */}
+          {/* Arrow in flight indicator - simple dark style */}
           {phase === 'shooting' && (
-            <div className="bg-amber-500/90 backdrop-blur-sm rounded-full px-5 py-1.5 text-white font-semibold text-sm shadow-[0_0_20px_rgba(245,158,11,0.4)]">
+            <div className="bg-gray-900/90 backdrop-blur-sm rounded-lg px-4 py-2 text-white/80 font-medium text-sm border border-white/10">
               Arrow in flight...
             </div>
           )}
@@ -238,7 +229,7 @@ export function GameControls() {
                 </div>
               )}
               {lastHitResult.type === 'miss' && (
-                <div className="bg-white/10 backdrop-blur-sm text-white/50 text-xl font-semibold px-6 py-2 rounded-xl">
+                <div className="bg-gray-900/90 backdrop-blur-sm rounded-lg px-4 py-2 text-white/60 font-medium text-sm border border-white/10">
                   Miss
                 </div>
               )}
@@ -247,11 +238,11 @@ export function GameControls() {
         </div>
       )}
 
-      {/* Duel rules popup - separate, below status area */}
+      {/* Duel rules popup - simple dark style */}
       {phase === 'result' && firstShotWouldKill && shotsThisRound === 1 && (
         <div className="flex justify-center mt-3">
-          <div className="bg-amber-900/80 backdrop-blur-sm text-amber-200 px-5 py-2 rounded-xl animate-pulse shadow-[0_0_20px_rgba(180,83,9,0.3)]">
-            <div className="text-xs font-semibold">A true duel demands honor — the wounded archer draws their final arrow</div>
+          <div className="bg-gray-900/90 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/10">
+            <div className="text-xs text-white/60 font-medium">A true duel demands honor — the wounded archer draws their final arrow</div>
           </div>
         </div>
       )}
