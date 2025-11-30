@@ -181,7 +181,7 @@ export function GameControls() {
         <div className="flex justify-center mt-2 relative z-40">
           <div
             className={`relative transition-transform duration-200 ${
-              currentTurn === 'left' ? '-translate-x-16 md:-translate-x-24' : 'translate-x-16 md:translate-x-24'
+              currentTurn === 'left' ? '-translate-x-24 md:-translate-x-36' : 'translate-x-24 md:translate-x-36'
             }`}
           >
             {/* Bubble tail pointing up */}
