@@ -249,7 +249,7 @@ export function buildArcherPrompt(
 
 SITUATION:
 - Target: ${distanceDesc}
-- Wind: ${windDesc} blowing ${wind.direction.toUpperCase()}
+- Wind: ${windDesc} blowing ${wind.direction.toUpperCase()} (constant - does not change between shots)
 - HP: You ${archer.health}/2 | Enemy ${opponent.health}/2
 
 AIMING: "power" controls distance, "angle" controls arc height. Learn from feedback below.
