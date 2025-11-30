@@ -108,6 +108,10 @@ export function CinematicCamera() {
     }
   };
 
+  // Track previous camera mode and transition timer
+  const prevCameraMode = useRef<CameraMode>(cameraMode);
+  const transitionTimer = useRef(0);
+
   // Update camera smoothly each frame
   useFrame((_, delta) => {
     // Skip camera movement when paused
@@ -115,10 +119,28 @@ export function CinematicCamera() {
 
     const target = getCameraTarget();
 
+    // Detect camera mode changes - start fast transition timer for archer focus
+    if (prevCameraMode.current !== cameraMode) {
+      prevCameraMode.current = cameraMode;
+      // Start fast transition when switching to archer focus
+      if (cameraMode === 'left-archer' || cameraMode === 'right-archer') {
+        transitionTimer.current = 1.5; // Fast transition for 1.5 seconds
+      }
+    }
+
+    // Count down transition timer
+    if (transitionTimer.current > 0) {
+      transitionTimer.current -= delta;
+    }
+
     // Different smoothness for different modes
     let smoothness = 0.04;
     if (cameraMode === 'follow-arrow') smoothness = 0.12;
     if (cameraMode === 'result') smoothness = 0.06;
+    // Fast transition when switching to archer focus (thinking phase)
+    if (transitionTimer.current > 0 && (cameraMode === 'left-archer' || cameraMode === 'right-archer')) {
+      smoothness = 0.12; // Faster transition to shooter
+    }
 
     // Special handling for arrow following
     if (cameraMode === 'follow-arrow' && currentArrowPath && currentArrowPath.length > 0) {
