@@ -4,7 +4,7 @@
  * Main 3D arena scene with cinematic camera
  */
 
-import { Suspense, useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Sky } from '@react-three/drei';
 import { useGameStore } from '@/lib/game-store';
@@ -15,6 +15,9 @@ import { CinematicCamera } from './CinematicCamera';
 import { StuckArrow as StuckArrowType } from '@/types/game';
 import { getRandomQuoteExcluding } from '@/config/ai-quotes';
 import { usePauseableTimeout } from '@/lib/use-pause';
+
+// Recovery timeout for stuck states (ms)
+const STUCK_RECOVERY_TIMEOUT = 5000;
 
 // Speech bubble state managed outside R3F for proper React state
 interface SpeechBubbleState {
@@ -192,6 +195,57 @@ export function Arena() {
   const recentQuotesRef = useRef<string[]>([]);
   const lastShootingTurn = useRef<string | null>(null);
 
+  // Track when we entered thinking phase for stuck detection
+  const thinkingStartRef = useRef<number | null>(null);
+
+  // WebGL context loss handler
+  const handleContextLoss = useCallback((event: Event) => {
+    event.preventDefault(); // Allows context restore attempt
+    console.warn('[Arena] WebGL context lost! Will attempt recovery...');
+  }, []);
+
+  const handleContextRestored = useCallback(() => {
+    console.log('[Arena] WebGL context restored');
+    // Check if we're stuck and need recovery
+    const state = useGameStore.getState();
+    if (state.phase === 'thinking' && state.screen === 'game') {
+      console.log('[Arena] Context restored during thinking phase - game should auto-recover via GameLoop');
+    }
+  }, []);
+
+  // Visibility change recovery - when tab becomes visible, check for stuck state
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const state = useGameStore.getState();
+
+        // If we're in thinking phase and have been for a while, the game might be stuck
+        if (state.phase === 'thinking' && state.screen === 'game' && thinkingStartRef.current) {
+          const stuckDuration = Date.now() - thinkingStartRef.current;
+
+          if (stuckDuration > STUCK_RECOVERY_TIMEOUT) {
+            console.warn('[Arena] Tab became visible - detected potentially stuck thinking phase (' +
+              Math.round(stuckDuration / 1000) + 's). Watchdog should handle this.');
+            // Note: We don't force cancel here - let the GameLoop watchdog handle it
+            // This just logs for debugging. The watchdog in GameLoop.tsx will fire.
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Track when thinking phase starts (for stuck detection)
+  useEffect(() => {
+    if (phase === 'thinking') {
+      thinkingStartRef.current = Date.now();
+    } else {
+      thinkingStartRef.current = null;
+    }
+  }, [phase]);
+
   // Pauseable timer for result display - triggers nextTurn after 3.5s
   usePauseableTimeout(
     () => {
@@ -234,6 +288,12 @@ export function Arena() {
           fov: 50,
           near: 0.1,
           far: 1000,
+        }}
+        onCreated={({ gl }) => {
+          // Attach WebGL context loss/restore handlers
+          const canvas = gl.domElement;
+          canvas.addEventListener('webglcontextlost', handleContextLoss);
+          canvas.addEventListener('webglcontextrestored', handleContextRestored);
         }}
       >
         <Suspense fallback={null}>

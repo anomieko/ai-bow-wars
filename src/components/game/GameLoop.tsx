@@ -282,9 +282,27 @@ export function GameLoop() {
         console.warn('[GameLoop] AI turn failed', { cancelled: result.cancelled, shouldCancelMatch: result.shouldCancelMatch, cancelReason: result.cancelReason });
         setThinkingModelId(null);
 
-        // If explicitly cancelled by user, do nothing
+        // If cancelled, check if it was user-initiated (navigated away) or unexpected (context loss)
         if (result.cancelled) {
-          console.log('[GameLoop] Turn was cancelled by user, not retrying');
+          // Check if we're still on the game screen - if so, it wasn't a user cancel
+          const currentScreen = useGameStore.getState().screen;
+          if (currentScreen !== 'game') {
+            console.log('[GameLoop] Turn was cancelled by user navigation, not retrying');
+            return;
+          }
+
+          // Still on game screen - this was an unexpected abort (WebGL context loss, etc.)
+          console.warn('[GameLoop] Request aborted but still in game - likely context loss, retrying...');
+          if (retryAttempt < MAX_TURN_RETRIES) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            if (turnId === currentTurnIdRef.current) {
+              await executeAITurn(retryAttempt + 1);
+            }
+            return;
+          }
+
+          // Can't retry - cancel gracefully
+          cancelMatch('Connection interrupted - please try again');
           return;
         }
 
