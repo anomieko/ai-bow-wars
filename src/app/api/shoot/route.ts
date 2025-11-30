@@ -102,6 +102,8 @@ export async function POST(request: NextRequest) {
       power = mockResponse.power;
     } else {
       // Real AI Gateway call
+      // Gemini 3 models require thinking_level, older Gemini uses thinkingBudget
+      const isGemini3 = modelId.includes('gemini-3');
       const result = await generateText({
         model: modelId,
         prompt,
@@ -109,13 +111,11 @@ export async function POST(request: NextRequest) {
         // Limit reasoning tokens so models don't spend all tokens thinking
         providerOptions: {
           openai: {
-            reasoningEffort: 'low',
+            reasoningEffort: 'none',  // GPT-5.1 supports 'none' for fastest responses
           },
-          google: {
-            thinkingConfig: {
-              thinkingBudget: 0, // Disable extended thinking for Gemini
-            },
-          },
+          google: isGemini3
+            ? { thinkingConfig: { thinkingLevel: 'low' } }  // Gemini 3 uses thinking_level
+            : { thinkingConfig: { thinkingBudget: 0 } },    // Older Gemini uses thinkingBudget
         },
       });
 

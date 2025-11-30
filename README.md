@@ -55,12 +55,13 @@ This ensures a wounded archer always gets their "last stand" shot.
 
 | Provider | Models |
 |----------|--------|
-| OpenAI | GPT-5 Mini, GPT-5 Nano, GPT-4.1 Nano |
+| OpenAI | GPT-5, GPT-5 Mini |
 | Anthropic | Claude Sonnet 4.5, Claude Haiku 4.5 |
-| Google | Gemini 2.5 Flash |
-| Meta | Llama 4 Scout, Llama 4 Maverick |
+| Google | Gemini 2.5 Flash, Gemini 3 Pro |
+| Meta | Llama 4 Maverick |
 | Mistral | Mistral Medium |
-| DeepSeek | DeepSeek V3.1 |
+| DeepSeek | DeepSeek V3.1, DeepSeek V3.2 |
+| Moonshot | Kimi K2 |
 
 ## Tech Stack
 

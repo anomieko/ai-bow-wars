@@ -24,28 +24,20 @@ export interface ModelConfig {
 export const MODELS: ModelConfig[] = [
   // === OpenAI ===
   {
+    id: 'openai/gpt-5',
+    name: 'GPT-5',
+    provider: 'OpenAI',
+    color: '#10a37f',
+    accentColor: '#0d8a6a',
+    icon: '⭐',
+  },
+  {
     id: 'openai/gpt-5-mini',
     name: 'GPT-5 Mini',
     provider: 'OpenAI',
     color: '#10a37f',
     accentColor: '#0d8a6a',
     icon: '🟢',
-  },
-  {
-    id: 'openai/gpt-5-nano',
-    name: 'GPT-5 Nano',
-    provider: 'OpenAI',
-    color: '#10a37f',
-    accentColor: '#0d8a6a',
-    icon: '🌿',
-  },
-  {
-    id: 'openai/gpt-4.1-nano',
-    name: 'GPT-4.1 Nano',
-    provider: 'OpenAI',
-    color: '#74aa9c',
-    accentColor: '#5a9a8a',
-    icon: '💚',
   },
 
   // === Anthropic ===
@@ -75,16 +67,16 @@ export const MODELS: ModelConfig[] = [
     accentColor: '#1967d2',
     icon: '🔵',
   },
+  {
+    id: 'google/gemini-3-pro-preview',
+    name: 'Gemini 3 Pro',
+    provider: 'Google',
+    color: '#4285f4',
+    accentColor: '#1967d2',
+    icon: '💎',
+  },
 
   // === Meta ===
-  {
-    id: 'meta/llama-4-scout',
-    name: 'Llama 4 Scout',
-    provider: 'Meta',
-    color: '#7c3aed',
-    accentColor: '#5b21b6',
-    icon: '🟣',
-  },
   {
     id: 'meta/llama-4-maverick',
     name: 'Llama 4 Maverick',
@@ -112,6 +104,24 @@ export const MODELS: ModelConfig[] = [
     color: '#6366f1',
     accentColor: '#4f46e5',
     icon: '🔮',
+  },
+  {
+    id: 'deepseek/deepseek-v3.2-exp',
+    name: 'DeepSeek V3.2',
+    provider: 'DeepSeek',
+    color: '#6366f1',
+    accentColor: '#4f46e5',
+    icon: '🧪',
+  },
+
+  // === Moonshot ===
+  {
+    id: 'moonshotai/kimi-k2',
+    name: 'Kimi K2',
+    provider: 'Moonshot',
+    color: '#a855f7',
+    accentColor: '#9333ea',
+    icon: '🌙',
   },
 
 ];

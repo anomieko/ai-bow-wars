@@ -274,7 +274,7 @@ function formatResultForPrompt(
     case 'headshot':
       return 'HEADSHOT! Perfect hit!';
     case 'body':
-      return 'BODY HIT! Struck their torso.';
+      return 'BODY HIT! Dealt 1 damage.';
     case 'miss':
       // Get trajectory analysis if we have path data
       let trajectory: { peakPosition: 'early' | 'middle' | 'late'; wasDescending: boolean; reachedRatio: number } =
