@@ -76,16 +76,6 @@ export const MODELS: ModelConfig[] = [
     icon: '🔵',
   },
 
-  // === xAI ===
-  {
-    id: 'xai/grok-4',
-    name: 'Grok 4',
-    provider: 'xAI',
-    color: '#dc2626',
-    accentColor: '#b91c1c',
-    icon: '❤️',
-  },
-
   // === Meta ===
   {
     id: 'meta/llama-4-scout',
