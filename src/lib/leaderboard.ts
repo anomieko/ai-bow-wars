@@ -159,15 +159,19 @@ export async function recordMatch(match: Omit<MatchRecord, 'id' | 'timestamp'>):
       timestamp: new Date().toISOString(),
     };
 
-    // Get current stats
-    const rawStats = await kv.get<Record<string, ModelStats>>(STATS_KEY) || {};
+    // Get current stats and total
+    const [rawStats, currentTotal] = await Promise.all([
+      kv.get<Record<string, ModelStats>>(STATS_KEY),
+      kv.get<number>(TOTAL_KEY),
+    ]);
+    const stats = rawStats || {};
     const currentStats: Record<string, ModelStats> = {};
 
     // Helper to get or initialize stats for a model
     const getStats = (modelId: string): ModelStats => {
       if (!currentStats[modelId]) {
-        currentStats[modelId] = rawStats[modelId]
-          ? migrateStats(rawStats[modelId])
+        currentStats[modelId] = stats[modelId]
+          ? migrateStats(stats[modelId])
           : createDefaultStats(modelId);
       }
       return currentStats[modelId];
@@ -231,16 +235,17 @@ export async function recordMatch(match: Omit<MatchRecord, 'id' | 'timestamp'>):
     }
 
     // Merge with existing stats (preserve models not in this match)
-    const mergedStats = { ...rawStats };
-    for (const [modelId, stats] of Object.entries(currentStats)) {
-      mergedStats[modelId] = stats;
+    const mergedStats = { ...stats };
+    for (const [modelId, modelStats] of Object.entries(currentStats)) {
+      mergedStats[modelId] = modelStats;
     }
 
-    // Save everything
+    // Save everything (use set instead of incr for total - handles corrupted data)
+    const newTotal = (typeof currentTotal === 'number' ? currentTotal : 0) + 1;
     await Promise.all([
       kv.set(STATS_KEY, mergedStats),
       kv.lpush(MATCHES_KEY, matchRecord),
-      kv.incr(TOTAL_KEY),
+      kv.set(TOTAL_KEY, newTotal),
       // Trim matches list to last 100
       kv.ltrim(MATCHES_KEY, 0, 99),
     ]);
