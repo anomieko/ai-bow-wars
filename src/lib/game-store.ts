@@ -163,6 +163,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       cameraMode: 'intro',
       lastHitResult: null,
       firstShotWouldKill: false,
+      stuckArrows: [],
     });
   },
 
