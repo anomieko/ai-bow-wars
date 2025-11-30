@@ -257,9 +257,8 @@ AIMING: "power" controls distance, "angle" controls arc height. Learn from feedb
 YOUR SHOTS (angle°/power%):
 ${shotHistory}
 
-Shot ${nextShotNum}. Output ONLY JSON:
-{"angle": 45, "power": 70, "reasoning": "brief"}
-Angle: 0-90°. Power: 0-100% (100 is MAX, cannot exceed).`;
+Shot ${nextShotNum}. X = your angle (0-90), Y = your power (0-100). Output ONLY:
+{"angle": X, "power": Y, "reasoning": "brief"}`;
 }
 
 /**
