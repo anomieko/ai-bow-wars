@@ -123,6 +123,24 @@ export function GameControls() {
                 >
                   {leftConfig.icon}
                 </div>
+                {/* Mobile HP dots - below icon */}
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-0.5 sm:hidden">
+                  {[0, 1].map((i) => {
+                    const isActive = i < (leftArcher?.health ?? 0);
+                    const isPending = isActive && i >= ((leftArcher?.health ?? 0) - displayedPendingLeft);
+                    return (
+                      <div
+                        key={i}
+                        className={`w-2 h-2 rounded-full transition-all ${
+                          isPending ? `bg-red-500 ${leftWillDie ? 'animate-pulse' : ''}` : ''
+                        }`}
+                        style={{
+                          backgroundColor: isActive && !isPending ? leftConfig.color : isPending ? undefined : 'rgba(255,255,255,0.2)',
+                        }}
+                      />
+                    );
+                  })}
+                </div>
                 {/* Thinking bubble for left archer */}
                 {isThinking && currentTurn === 'left' && (
                   <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50">
@@ -176,6 +194,24 @@ export function GameControls() {
                   }}
                 >
                   {rightConfig.icon}
+                </div>
+                {/* Mobile HP dots - below icon */}
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-0.5 sm:hidden">
+                  {[0, 1].map((i) => {
+                    const isActive = i < (rightArcher?.health ?? 0);
+                    const isPending = isActive && i >= ((rightArcher?.health ?? 0) - displayedPendingRight);
+                    return (
+                      <div
+                        key={i}
+                        className={`w-2 h-2 rounded-full transition-all ${
+                          isPending ? `bg-red-500 ${rightWillDie ? 'animate-pulse' : ''}` : ''
+                        }`}
+                        style={{
+                          backgroundColor: isActive && !isPending ? rightConfig.color : isPending ? undefined : 'rgba(255,255,255,0.2)',
+                        }}
+                      />
+                    );
+                  })}
                 </div>
                 {/* Thinking bubble for right archer */}
                 {isThinking && currentTurn === 'right' && (

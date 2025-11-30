@@ -11,6 +11,8 @@ import { LeaderboardScreen } from '@/components/ui/LeaderboardScreen';
 import { CreditsScreen } from '@/components/ui/CreditsScreen';
 import { DebugPanel } from '@/components/ui/DebugPanel';
 import { PausedOverlay } from '@/components/ui/PausedOverlay';
+import { MobileIntro } from '@/components/ui/MobileIntro';
+import { MobileBattleLog } from '@/components/ui/MobileBattleLog';
 import { useGameStore } from '@/lib/game-store';
 
 export default function Home() {
@@ -82,6 +84,12 @@ export default function Home() {
 
         {/* Pause overlay - shown when user alt-tabs */}
         <PausedOverlay />
+
+        {/* Mobile intro overlay - covers screen on phones during intro */}
+        <MobileIntro />
+
+        {/* Mobile battle log - bottom bar on phones */}
+        <MobileBattleLog />
       </div>
     </div>
   );
