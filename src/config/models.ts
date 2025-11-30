@@ -78,14 +78,6 @@ export const MODELS: ModelConfig[] = [
 
   // === xAI ===
   {
-    id: 'xai/grok-code-fast-1',
-    name: 'Grok Code Fast',
-    provider: 'xAI',
-    color: '#ef4444',
-    accentColor: '#dc2626',
-    icon: '🔴',
-  },
-  {
     id: 'xai/grok-4',
     name: 'Grok 4',
     provider: 'xAI',

@@ -175,13 +175,17 @@ export function GameControls() {
         </div>
       </div>
 
-      {/* Thinking bubble - positioned to connect to the model icon */}
+      {/* Thinking bubble - positioned under the active model's icon in VS bar */}
       {isThinking && thinkingConfig && (
-        <div className={`flex ${currentTurn === 'left' ? 'justify-start pl-4' : 'justify-end pr-4'} mt-2`}>
-          <div className="relative">
+        <div className="flex justify-center mt-2 relative z-40">
+          <div
+            className={`relative transition-transform duration-200 ${
+              currentTurn === 'left' ? '-translate-x-16 md:-translate-x-24' : 'translate-x-16 md:translate-x-24'
+            }`}
+          >
             {/* Bubble tail pointing up to icon */}
             <div
-              className={`absolute -top-2 ${currentTurn === 'left' ? 'left-4' : 'right-4'} w-3 h-3 rotate-45`}
+              className="absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45"
               style={{ backgroundColor: `${thinkingConfig.color}30` }}
             />
             {/* Bubble content */}
