@@ -107,14 +107,31 @@ export function GameControls() {
           {/* Left Archer */}
           {leftConfig && (
             <div className={`flex items-center gap-2 md:gap-3 transition-all ${currentTurn === 'left' && phase !== 'finished' ? 'scale-105' : ''}`}>
-              <div
-                className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-shadow"
-                style={{
-                  backgroundColor: `${leftConfig.color}30`,
-                  boxShadow: currentTurn === 'left' && phase !== 'finished' ? `0 0 20px ${leftConfig.color}60` : 'none',
-                }}
-              >
-                {leftConfig.icon}
+              {/* Icon with thinking bubble */}
+              <div className="relative">
+                <div
+                  className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-shadow"
+                  style={{
+                    backgroundColor: `${leftConfig.color}30`,
+                    boxShadow: currentTurn === 'left' && phase !== 'finished' ? `0 0 20px ${leftConfig.color}60` : 'none',
+                  }}
+                >
+                  {leftConfig.icon}
+                </div>
+                {/* Thinking bubble for left archer */}
+                {isThinking && currentTurn === 'left' && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50">
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rotate-45 bg-white border-l-2 border-t-2 border-black/80" />
+                    <div className="relative bg-white rounded-2xl px-3 py-1.5 flex items-center gap-2 border-2 border-black/80 shadow-lg whitespace-nowrap">
+                      <div className="flex gap-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-800 animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-800 animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-800 animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                      <span className="text-gray-800 text-xs font-semibold">Thinking...</span>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="hidden sm:block text-left">
                 <div className="text-white font-semibold text-sm">{leftConfig.name}</div>
@@ -144,14 +161,31 @@ export function GameControls() {
                   reverse
                 />
               </div>
-              <div
-                className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-shadow"
-                style={{
-                  backgroundColor: `${rightConfig.color}30`,
-                  boxShadow: currentTurn === 'right' && phase !== 'finished' ? `0 0 20px ${rightConfig.color}60` : 'none',
-                }}
-              >
-                {rightConfig.icon}
+              {/* Icon with thinking bubble */}
+              <div className="relative">
+                <div
+                  className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-shadow"
+                  style={{
+                    backgroundColor: `${rightConfig.color}30`,
+                    boxShadow: currentTurn === 'right' && phase !== 'finished' ? `0 0 20px ${rightConfig.color}60` : 'none',
+                  }}
+                >
+                  {rightConfig.icon}
+                </div>
+                {/* Thinking bubble for right archer */}
+                {isThinking && currentTurn === 'right' && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50">
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rotate-45 bg-white border-l-2 border-t-2 border-black/80" />
+                    <div className="relative bg-white rounded-2xl px-3 py-1.5 flex items-center gap-2 border-2 border-black/80 shadow-lg whitespace-nowrap">
+                      <div className="flex gap-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-800 animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-800 animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-800 animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                      <span className="text-gray-800 text-xs font-semibold">Thinking...</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -175,29 +209,6 @@ export function GameControls() {
           </div>
         </div>
       </div>
-
-      {/* Thinking bubble - white speech bubble with black outline */}
-      {isThinking && thinkingConfig && (
-        <div className="flex justify-center mt-2 relative z-40">
-          <div
-            className={`relative transition-transform duration-200 ${
-              currentTurn === 'left' ? '-translate-x-24 md:-translate-x-36' : 'translate-x-24 md:translate-x-36'
-            }`}
-          >
-            {/* Bubble tail pointing up */}
-            <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rotate-45 bg-white border-l-2 border-t-2 border-black/80" />
-            {/* Bubble content */}
-            <div className="relative bg-white rounded-2xl px-4 py-2 flex items-center gap-2 border-2 border-black/80 shadow-lg">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-full bg-gray-800 animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 rounded-full bg-gray-800 animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 rounded-full bg-gray-800 animate-bounce" style={{ animationDelay: '300ms' }} />
-              </div>
-              <span className="text-gray-800 text-sm font-semibold">Thinking...</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Centered status area - arrow in flight, results */}
       {(phase === 'shooting' || (phase === 'result' && lastHitResult)) && (
