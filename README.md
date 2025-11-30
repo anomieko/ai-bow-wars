@@ -55,15 +55,13 @@ This ensures a wounded archer always gets their "last stand" shot.
 
 | Provider | Models |
 |----------|--------|
-| OpenAI | GPT-5 Mini, GPT-4.1 Nano |
+| OpenAI | GPT-5 Mini, GPT-5 Nano, GPT-4.1 Nano |
 | Anthropic | Claude Sonnet 4.5, Claude Haiku 4.5 |
 | Google | Gemini 2.5 Flash |
-| xAI | Grok Code Fast |
-| Meta | Llama 4 Scout |
-| Mistral | Mistral Medium 3 |
+| xAI | Grok 4 |
+| Meta | Llama 4 Scout, Llama 4 Maverick |
+| Mistral | Mistral Medium |
 | DeepSeek | DeepSeek V3.1 |
-| Cohere | Command R |
-| Alibaba | Qwen3 30B |
 
 ## Tech Stack
 
@@ -112,8 +110,12 @@ npm run lint     # Run ESLint
 
 ## License
 
-MIT
+MIT — See [LICENSE](LICENSE) for details.
 
 ## Credits
 
 Built with Vercel AI Gateway for the December 2025 Hackathon.
+
+---
+
+**A note on attribution:** If you fork or build on this project, please keep the in-app Credits tab and add yourself to it! It's not legally required, but it's the right thing to do. Let's keep the chain of credit going. 🙏
