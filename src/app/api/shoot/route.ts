@@ -104,6 +104,8 @@ export async function POST(request: NextRequest) {
       // Real AI Gateway call
       // Gemini 3 models require thinking_level, older Gemini uses thinkingBudget
       const isGemini3 = modelId.includes('gemini-3');
+      // GPT-5 supports 'none', GPT-5-mini only supports 'low'
+      const isGpt5Full = modelId === 'openai/gpt-5';
       const result = await generateText({
         model: modelId,
         prompt,
@@ -111,7 +113,7 @@ export async function POST(request: NextRequest) {
         // Limit reasoning tokens so models don't spend all tokens thinking
         providerOptions: {
           openai: {
-            reasoningEffort: 'none',  // GPT-5.1 supports 'none' for fastest responses
+            reasoningEffort: isGpt5Full ? 'none' : 'low',
           },
           google: isGemini3
             ? { thinkingConfig: { thinkingLevel: 'low' } }  // Gemini 3 uses thinking_level
