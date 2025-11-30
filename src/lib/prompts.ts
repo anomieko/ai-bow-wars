@@ -245,7 +245,7 @@ export function buildArcherPrompt(
   const distanceDesc = getDistanceEstimate(distance);
   const windDesc = getWindEstimate(wind);
 
-  return `Archer duel - hit your opponent to win!
+  return `Archer duel - hit before they hit you! Each miss = enemy gets a shot at you.
 
 SITUATION:
 - Target: ${distanceDesc}
