@@ -245,9 +245,13 @@ export function buildArcherPrompt(
   const distanceDesc = getDistanceEstimate(distance);
   const windDesc = getWindEstimate(wind);
 
+  const mySide = archer.side;
+  const enemySide = mySide === 'left' ? 'right' : 'left';
+
   return `Archer duel - hit before they hit you! Each miss = enemy gets a shot at you.
 
 SITUATION:
+- Position: You're on the ${mySide.toUpperCase()}, enemy is on the ${enemySide.toUpperCase()}
 - Target: ${distanceDesc}
 - Wind: ${windDesc} blowing ${wind.direction.toUpperCase()} (constant - does not change between shots)
 - HP: You ${archer.health}/2 | Enemy ${opponent.health}/2
