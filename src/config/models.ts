@@ -24,14 +24,6 @@ export interface ModelConfig {
 export const MODELS: ModelConfig[] = [
   // === OpenAI ===
   {
-    id: 'openai/gpt-5',
-    name: 'GPT-5',
-    provider: 'OpenAI',
-    color: '#10a37f',
-    accentColor: '#0d8a6a',
-    icon: '✨',
-  },
-  {
     id: 'openai/gpt-5-mini',
     name: 'GPT-5 Mini',
     provider: 'OpenAI',
