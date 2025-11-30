@@ -105,7 +105,7 @@ function TurnMessage({ turn, index }: { turn: Turn; index: number }) {
           {showResponse && (
             <div className="mt-2 p-3 bg-black/40 rounded-lg border border-blue-500/20">
               <div className="text-xs text-blue-400 mb-1 font-semibold">Raw AI Response:</div>
-              <pre className="text-xs text-white/70 whitespace-pre-wrap font-mono overflow-x-auto">
+              <pre className="text-xs text-white/70 whitespace-pre-wrap break-words font-mono">
                 {turn.rawResponse || '(No response captured - mock mode)'}
               </pre>
             </div>
@@ -115,7 +115,7 @@ function TurnMessage({ turn, index }: { turn: Turn; index: number }) {
           {showPrompt && (
             <div className="mt-2 p-3 bg-black/40 rounded-lg border border-purple-500/20">
               <div className="text-xs text-purple-400 mb-1 font-semibold">Prompt Sent:</div>
-              <pre className="text-xs text-white/70 whitespace-pre-wrap font-mono overflow-x-auto">
+              <pre className="text-xs text-white/70 whitespace-pre-wrap break-words font-mono">
                 {turn.prompt || '(No prompt captured - mock mode)'}
               </pre>
             </div>
@@ -228,7 +228,7 @@ export function MatchDetailsModal({ isOpen, onClose }: MatchDetailsModalProps) {
         </div>
 
         {/* Turn history - scrollable */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 sleek-scrollbar">
           <div className="space-y-6">
             {rounds.map((roundTurns, roundIndex) => (
               <div key={roundIndex}>
