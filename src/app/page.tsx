@@ -10,6 +10,7 @@ import { InfoScreen } from '@/components/ui/InfoScreen';
 import { LeaderboardScreen } from '@/components/ui/LeaderboardScreen';
 import { CreditsScreen } from '@/components/ui/CreditsScreen';
 import { DebugPanel } from '@/components/ui/DebugPanel';
+import { PausedOverlay } from '@/components/ui/PausedOverlay';
 import { useGameStore } from '@/lib/game-store';
 
 export default function Home() {
@@ -17,6 +18,7 @@ export default function Home() {
     screen,
     setScreen,
     selectRandomModels,
+    isPaused,
   } = useGameStore();
 
   // Main Menu
@@ -56,7 +58,7 @@ export default function Home() {
 
   // Game screen
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className={`min-h-screen bg-gray-950 text-white ${isPaused ? 'game-paused' : ''}`}>
       {/* Main content - full screen arena */}
       <div className="relative w-full h-screen">
         {/* 3D Arena */}
@@ -77,6 +79,9 @@ export default function Home() {
 
         {/* Game loop handler */}
         <GameLoop />
+
+        {/* Pause overlay - shown when user alt-tabs */}
+        <PausedOverlay />
       </div>
     </div>
   );

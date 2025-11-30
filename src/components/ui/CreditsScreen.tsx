@@ -26,11 +26,28 @@ export function CreditsScreen({ onBack }: CreditsScreenProps) {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4 md:p-8">
-        <div className="max-w-lg w-full text-center">
+      <div className="relative z-10 min-h-screen p-4 md:p-8">
+        {/* Top header with back button */}
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span>Back</span>
+            </button>
+            <h1 className="text-2xl font-bold text-white">Credits</h1>
+            <div className="w-16" />
+          </div>
+        </div>
+
+        <div className="max-w-lg w-full mx-auto text-center">
           {/* Header */}
           <div className="mb-12">
-            <h1 className="text-4xl font-bold text-white mb-2">Credits</h1>
+            <h2 className="text-3xl font-bold text-white mb-2">The Team</h2>
             <p className="text-gray-400">The people behind AI Bow Wars</p>
           </div>
 
@@ -40,6 +57,18 @@ export function CreditsScreen({ onBack }: CreditsScreenProps) {
             <p className="text-gray-400 mb-6">Creator & Developer</p>
 
             <div className="space-y-3">
+              <a
+                href="https://x.com/consentengineer"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-3 w-full py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl transition-all text-white"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+                <span>@consentengineer</span>
+              </a>
+
               <a
                 href="https://github.com/anomieko"
                 target="_blank"
@@ -80,20 +109,12 @@ export function CreditsScreen({ onBack }: CreditsScreenProps) {
           </div>
 
           {/* Hackathon */}
-          <div className="text-center mb-8">
+          <div className="text-center">
             <p className="text-gray-500 text-sm">
               Built for the <span className="text-white">Vercel AI Gateway Hackathon</span>
             </p>
             <p className="text-gray-600 text-xs mt-1">December 2025</p>
           </div>
-
-          {/* Back button */}
-          <button
-            onClick={onBack}
-            className="w-full py-4 bg-white/5 hover:bg-white/10 backdrop-blur-sm border border-white/10 hover:border-white/20 text-white font-semibold rounded-xl transition-all"
-          >
-            Back to Menu
-          </button>
         </div>
       </div>
     </div>

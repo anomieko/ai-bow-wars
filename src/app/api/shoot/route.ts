@@ -105,15 +105,36 @@ export async function POST(request: NextRequest) {
       const result = await generateText({
         model: modelId,
         prompt,
-        maxOutputTokens: 200,
+        maxOutputTokens: 1024,
+        // Limit reasoning tokens so models don't spend all tokens thinking
+        providerOptions: {
+          openai: {
+            reasoningEffort: 'low',
+          },
+          google: {
+            thinkingConfig: {
+              thinkingBudget: 0, // Disable extended thinking for Gemini
+            },
+          },
+        },
       });
 
       rawResponse = result.text;
+
+      // Debug: log empty responses
+      if (!result.text || result.text.trim() === '') {
+        console.error(`[EMPTY RESPONSE] ${modelId}:`, {
+          text: result.text,
+          finishReason: result.finishReason,
+          usage: result.usage,
+        });
+      }
+
       const parsed = parseAIResponse(result.text);
 
       if (!parsed) {
         // Log the failed response for debugging
-        console.error(`[PARSE FAIL] ${modelId}:`, result.text.slice(0, 300));
+        console.error(`[PARSE FAIL] ${modelId}:`, result.text?.slice(0, 300) || '(empty)');
         parseError = true;
         // Use smart fallback
         const fallback = generateSmartFallback(archer, distance, turns);
@@ -130,7 +151,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       parseError,
-      rawResponse: parseError ? rawResponse?.slice(0, 200) : undefined,
+      prompt,                    // Always include for debugging
+      rawResponse: rawResponse,  // Always include full response
       shot: {
         reasoning,
         angle,

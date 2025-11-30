@@ -9,6 +9,7 @@ import { Group } from 'three';
 import { Text, Line, Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { getModelConfig } from '@/config/models';
+import { useGameStore } from '@/lib/game-store';
 
 interface ArcherProps {
   modelId: string;
@@ -29,6 +30,7 @@ export function Archer({ modelId, position, side, health, isHit = false, isDrawi
   const [shakeOffset, setShakeOffset] = useState({ x: 0, y: 0 });
   const [drawProgress, setDrawProgress] = useState(0); // 0 = relaxed, 1 = fully drawn
   const [currentAimAngle, setCurrentAimAngle] = useState(0); // Smoothly animated aim angle
+  const isPaused = useGameStore((s) => s.isPaused);
 
   // Flip archer to face opponent
   const rotation: [number, number, number] = [0, side === 'left' ? 0 : Math.PI, 0];
@@ -53,6 +55,9 @@ export function Archer({ modelId, position, side, health, isHit = false, isDrawi
 
   // Animate draw progress
   useFrame((_, delta) => {
+    // Skip all animations when paused
+    if (isPaused) return;
+
     // Hit shake
     if (hitFlash > 0) {
       setShakeOffset({

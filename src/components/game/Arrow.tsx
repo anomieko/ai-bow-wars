@@ -10,6 +10,7 @@ import { useFrame } from '@react-three/fiber';
 import { Trail } from '@react-three/drei';
 import { Vector2 } from '@/types/game';
 import { getModelConfig } from '@/config/models';
+import { useGameStore } from '@/lib/game-store';
 
 interface ArrowProps {
   path: Vector2[];
@@ -23,12 +24,16 @@ export function Arrow({ path, modelId, onComplete, speed = 1 }: ArrowProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const config = getModelConfig(modelId);
+  const isPaused = useGameStore((s) => s.isPaused);
 
   // Animate along path
   useFrame((_, delta) => {
-    if (isComplete || !groupRef.current || path.length === 0) return;
+    // Skip animation when paused
+    if (isPaused || isComplete || !groupRef.current || path.length === 0) return;
 
-    const nextIndex = currentIndex + delta * 60 * speed; // 60fps base
+    // Clamp delta to prevent huge jumps when tab regains focus
+    const clampedDelta = Math.min(delta, 0.1);
+    const nextIndex = currentIndex + clampedDelta * 60 * speed; // 60fps base
 
     if (nextIndex >= path.length - 1) {
       // Animation complete

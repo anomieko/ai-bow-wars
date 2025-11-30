@@ -36,6 +36,10 @@ interface GameStore extends GameState {
   cameraMode: CameraMode;
   setCameraMode: (mode: CameraMode) => void;
 
+  // Pause state - for handling alt-tab/visibility changes
+  isPaused: boolean;
+  setPaused: (paused: boolean) => void;
+
   // Match type (random vs custom) - only random affects ELO
   matchType: MatchType;
 
@@ -44,7 +48,7 @@ interface GameStore extends GameState {
   selectRandomModels: () => void;
   startMatch: () => void;
   setPhase: (phase: GamePhase) => void;
-  executeShot: (shot: Shot, arrowPath: Vector2[], result: HitResult) => void;
+  executeShot: (shot: Shot, arrowPath: Vector2[], result: HitResult, prompt?: string, rawResponse?: string) => void;
   nextTurn: () => void;
   endMatch: (winner: string | null, reason: 'headshot' | 'bodyshot' | 'timeout' | 'tie') => void;
   cancelMatch: (reason: string) => void;
@@ -97,6 +101,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   ...initialState,
   screen: 'menu',
   cameraMode: 'overview',
+  isPaused: false,
   matchType: 'random',
   currentArrowPath: null,
   thinkingModelId: null,
@@ -110,6 +115,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setCameraMode: (mode: CameraMode) => {
     set({ cameraMode: mode });
+  },
+
+  setPaused: (paused: boolean) => {
+    set({ isPaused: paused });
   },
 
   selectModels: (leftModelId: string, rightModelId: string, matchType: MatchType = 'custom') => {
@@ -185,7 +194,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ phase });
   },
 
-  executeShot: (shot: Shot, arrowPath: Vector2[], result: HitResult) => {
+  executeShot: (shot: Shot, arrowPath: Vector2[], result: HitResult, prompt?: string, rawResponse?: string) => {
     const state = get();
     const currentArcher = state.currentTurn === 'left' ? state.leftArcher : state.rightArcher;
     const targetArcher = state.currentTurn === 'left' ? state.rightArcher : state.leftArcher;
@@ -200,6 +209,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       result,
       arrowPath,
       timestamp: new Date().toISOString(),
+      prompt,
+      rawResponse,
     };
 
     // Calculate damage to accumulate (NOT applied yet - applied at round end)

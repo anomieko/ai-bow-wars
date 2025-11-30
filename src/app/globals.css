@@ -24,3 +24,9 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Pause all CSS animations when game is paused */
+.game-paused,
+.game-paused * {
+  animation-play-state: paused !important;
+}

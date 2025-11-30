@@ -32,6 +32,14 @@ export const MODELS: ModelConfig[] = [
     icon: '🟢',
   },
   {
+    id: 'openai/gpt-5-nano',
+    name: 'GPT-5 Nano',
+    provider: 'OpenAI',
+    color: '#10a37f',
+    accentColor: '#0d8a6a',
+    icon: '🌿',
+  },
+  {
     id: 'openai/gpt-4.1-nano',
     name: 'GPT-4.1 Nano',
     provider: 'OpenAI',
@@ -77,6 +85,14 @@ export const MODELS: ModelConfig[] = [
     accentColor: '#dc2626',
     icon: '🔴',
   },
+  {
+    id: 'xai/grok-4',
+    name: 'Grok 4',
+    provider: 'xAI',
+    color: '#dc2626',
+    accentColor: '#b91c1c',
+    icon: '❤️',
+  },
 
   // === Meta ===
   {
@@ -87,11 +103,19 @@ export const MODELS: ModelConfig[] = [
     accentColor: '#5b21b6',
     icon: '🟣',
   },
+  {
+    id: 'meta/llama-4-maverick',
+    name: 'Llama 4 Maverick',
+    provider: 'Meta',
+    color: '#8b5cf6',
+    accentColor: '#6d28d9',
+    icon: '💜',
+  },
 
   // === Mistral ===
   {
-    id: 'mistral/mistral-medium-3',
-    name: 'Mistral Medium 3',
+    id: 'mistral/mistral-medium',
+    name: 'Mistral Medium',
     provider: 'Mistral',
     color: '#f97316',
     accentColor: '#ea580c',
@@ -108,25 +132,6 @@ export const MODELS: ModelConfig[] = [
     icon: '🔮',
   },
 
-  // === Cohere ===
-  {
-    id: 'cohere/command-r',
-    name: 'Command R',
-    provider: 'Cohere',
-    color: '#14b8a6',
-    accentColor: '#0d9488',
-    icon: '🩵',
-  },
-
-  // === Alibaba (Qwen3 - Apr 2025) ===
-  {
-    id: 'qwen/qwen3-30b-a3b',
-    name: 'Qwen3 30B',
-    provider: 'Alibaba',
-    color: '#ff6a00',
-    accentColor: '#e55d00',
-    icon: '🧡',
-  },
 ];
 
 // === Helper Functions ===

@@ -4,8 +4,10 @@
  * Game HUD overlay - Modern game UI with clean aesthetics
  */
 
+import { useState } from 'react';
 import { useGameStore } from '@/lib/game-store';
 import { getModelConfig } from '@/config/models';
+import { MatchDetailsModal } from './MatchDetailsModal';
 
 export function GameControls() {
   const {
@@ -25,6 +27,8 @@ export function GameControls() {
     firstShotWouldKill,
     pendingDamage,
   } = useGameStore();
+
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   if (phase === 'setup') return null;
 
@@ -85,17 +89,20 @@ export function GameControls() {
   return (
     <>
       {/* Top bar - VS display and match info */}
-      <div className="flex items-center justify-between gap-4">
-        {/* Back button */}
-        <button
-          onClick={backToMenu}
-          className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white/80 hover:text-white rounded-xl transition-all font-medium"
-        >
-          Menu
-        </button>
+      <div className="grid grid-cols-3 gap-4 items-center">
+        {/* Back button - left aligned */}
+        <div className="flex justify-start">
+          <button
+            onClick={backToMenu}
+            className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white/80 hover:text-white rounded-xl transition-all font-medium"
+          >
+            Menu
+          </button>
+        </div>
 
-        {/* Center - VS Display */}
-        <div className="flex items-center gap-4 md:gap-6 bg-black/60 backdrop-blur-md rounded-2xl px-4 md:px-6 py-3">
+        {/* Center - VS Display - truly centered */}
+        <div className="flex justify-center">
+          <div className="flex items-center gap-4 md:gap-6 bg-black/60 backdrop-blur-md rounded-2xl px-4 md:px-6 py-3">
           {/* Left Archer */}
           {leftConfig && (
             <div className={`flex items-center gap-2 md:gap-3 transition-all ${currentTurn === 'left' && phase !== 'finished' ? 'scale-105' : ''}`}>
@@ -147,23 +154,102 @@ export function GameControls() {
               </div>
             </div>
           )}
+          </div>
         </div>
 
-        {/* Match info */}
-        <div className="bg-black/60 backdrop-blur-md rounded-xl px-4 py-2 text-sm">
-          {matchSetup && (
-            <div>
-              <div className="font-bold text-white">
-                Round {roundNumber}/15
-                {shotsThisRound > 0 && <span className="text-white/50 font-normal ml-1">({shotsThisRound}/2)</span>}
+        {/* Match info - right aligned */}
+        <div className="flex justify-end">
+          <div className="bg-black/60 backdrop-blur-md rounded-xl px-4 py-2 text-sm">
+            {matchSetup && (
+              <div>
+                <div className="font-bold text-white">
+                  Round {roundNumber}/15
+                  {shotsThisRound > 0 && <span className="text-white/50 font-normal ml-1">({shotsThisRound}/2)</span>}
+                </div>
+                <div className="text-xs text-white/60">
+                  {matchSetup.distance}m | {matchSetup.wind.speed > 0 ? `${matchSetup.wind.speed}m/s ${matchSetup.wind.direction === 'left' ? '←' : '→'}` : 'No wind'}
+                </div>
               </div>
-              <div className="text-xs text-white/60">
-                {matchSetup.distance}m | {matchSetup.wind.speed > 0 ? `${matchSetup.wind.speed}m/s ${matchSetup.wind.direction === 'left' ? '←' : '→'}` : 'No wind'}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Thinking bubble - positioned to connect to the model icon */}
+      {isThinking && thinkingConfig && (
+        <div className={`flex ${currentTurn === 'left' ? 'justify-start pl-4' : 'justify-end pr-4'} mt-2`}>
+          <div className="relative">
+            {/* Bubble tail pointing up to icon */}
+            <div
+              className={`absolute -top-2 ${currentTurn === 'left' ? 'left-4' : 'right-4'} w-3 h-3 rotate-45`}
+              style={{ backgroundColor: `${thinkingConfig.color}30` }}
+            />
+            {/* Bubble content */}
+            <div
+              className="relative backdrop-blur-md rounded-xl px-4 py-2 flex items-center gap-2"
+              style={{
+                backgroundColor: `${thinkingConfig.color}20`,
+                border: `1px solid ${thinkingConfig.color}40`,
+              }}
+            >
+              <div className="flex gap-1">
+                <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: thinkingConfig.color, animationDelay: '0ms' }} />
+                <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: thinkingConfig.color, animationDelay: '150ms' }} />
+                <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: thinkingConfig.color, animationDelay: '300ms' }} />
+              </div>
+              <span className="text-white/80 text-sm font-medium">Calculating...</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Centered status area - arrow in flight, results */}
+      {(phase === 'shooting' || (phase === 'result' && lastHitResult)) && (
+        <div className="flex justify-center mt-2">
+          {/* Arrow in flight indicator */}
+          {phase === 'shooting' && (
+            <div className="bg-amber-500/90 backdrop-blur-sm rounded-full px-5 py-1.5 text-white font-semibold text-sm shadow-[0_0_20px_rgba(245,158,11,0.4)]">
+              Arrow in flight...
+            </div>
+          )}
+
+          {/* Result indicators */}
+          {phase === 'result' && lastHitResult && (
+            <>
+              {lastHitResult.type === 'headshot' && (
+                <div className="relative">
+                  <div className="bg-gradient-to-r from-red-600 via-red-500 to-red-600 text-white text-2xl md:text-3xl font-black px-8 py-3 rounded-xl shadow-[0_0_40px_rgba(239,68,68,0.6)] animate-pulse">
+                    HEADSHOT!
+                  </div>
+                  <div className="absolute inset-0 bg-red-500/30 rounded-xl blur-xl -z-10 animate-ping" />
+                </div>
+              )}
+              {lastHitResult.type === 'body' && (
+                <div className="relative">
+                  <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white text-2xl md:text-3xl font-black px-8 py-3 rounded-xl shadow-[0_0_40px_rgba(245,158,11,0.6)]">
+                    HIT!
+                  </div>
+                  <div className="absolute inset-0 bg-amber-500/20 rounded-xl blur-lg -z-10" />
+                </div>
+              )}
+              {lastHitResult.type === 'miss' && (
+                <div className="bg-white/10 backdrop-blur-sm text-white/50 text-xl font-semibold px-6 py-2 rounded-xl">
+                  Miss
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Duel rules popup - separate, below status area */}
+      {phase === 'result' && firstShotWouldKill && shotsThisRound === 1 && (
+        <div className="flex justify-center mt-3">
+          <div className="bg-amber-900/80 backdrop-blur-sm text-amber-200 px-5 py-2 rounded-xl animate-pulse shadow-[0_0_20px_rgba(180,83,9,0.3)]">
+            <div className="text-xs font-semibold">A true duel demands honor — the wounded archer draws their final arrow</div>
+          </div>
+        </div>
+      )}
 
       {/* Center status overlays */}
       {/* Intro */}
@@ -189,77 +275,6 @@ export function GameControls() {
               {leftConfig?.name} vs {rightConfig?.name}
             </h2>
             <p className="text-lg text-white/60 animate-pulse">Match starting...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Thinking indicator */}
-      {isThinking && thinkingConfig && (
-        <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-40">
-          <div
-            className="backdrop-blur-md rounded-2xl px-10 py-8 text-center"
-            style={{
-              backgroundColor: 'rgba(0,0,0,0.85)',
-              boxShadow: `0 0 60px ${thinkingConfig.color}30`
-            }}
-          >
-            <div
-              className="w-16 h-16 rounded-xl mx-auto mb-4 flex items-center justify-center text-4xl"
-              style={{
-                backgroundColor: `${thinkingConfig.color}30`,
-                boxShadow: `0 0 30px ${thinkingConfig.color}40`
-              }}
-            >
-              {thinkingConfig.icon}
-            </div>
-            <div className="text-xl text-white font-bold">{thinkingConfig.name}</div>
-            <div className="text-amber-400 mt-2 font-medium">Calculating shot...</div>
-            <div className="mt-4 flex justify-center gap-1.5">
-              <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Shot fired indicator */}
-      {phase === 'shooting' && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 pointer-events-none z-40">
-          <div className="bg-amber-500 rounded-full px-6 py-2 text-white font-bold animate-pulse shadow-[0_0_30px_rgba(245,158,11,0.5)]">
-            Arrow in flight!
-          </div>
-        </div>
-      )}
-
-      {/* Result indicator */}
-      {phase === 'result' && lastHitResult && (
-        <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-40">
-          <div className="text-center">
-            <div className={`${lastHitResult.type === 'miss' ? '' : 'animate-bounce'}`}>
-              {lastHitResult.type === 'headshot' && (
-                <div className="bg-gradient-to-b from-red-500 to-red-700 text-white text-4xl md:text-5xl font-black px-12 py-6 rounded-2xl shadow-[0_0_60px_rgba(239,68,68,0.6)]">
-                  HEADSHOT!
-                </div>
-              )}
-              {lastHitResult.type === 'body' && (
-                <div className="bg-gradient-to-b from-amber-500 to-amber-600 text-white text-4xl md:text-5xl font-black px-12 py-6 rounded-2xl shadow-[0_0_60px_rgba(245,158,11,0.6)]">
-                  HIT!
-                </div>
-              )}
-              {lastHitResult.type === 'miss' && (
-                <div className="bg-black/80 backdrop-blur-sm text-white/60 text-3xl md:text-4xl font-bold px-10 py-5 rounded-2xl">
-                  MISS
-                </div>
-              )}
-            </div>
-            {/* Duel rules popup */}
-            {firstShotWouldKill && shotsThisRound === 1 && (
-              <div className="mt-4 bg-amber-900/90 text-amber-200 px-6 py-3 rounded-xl animate-pulse shadow-[0_0_30px_rgba(180,83,9,0.4)]">
-                <div className="text-sm font-semibold">A true duel demands honor...</div>
-                <div className="text-xs text-amber-300 mt-1">The wounded archer draws their final arrow</div>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -292,12 +307,20 @@ export function GameControls() {
               {winReason === 'bodyshot' && 'Victory by elimination!'}
               {winReason === 'timeout' && 'Most damage after time limit!'}
             </div>
-            <button
-              onClick={backToMenu}
-              className="mt-8 px-10 py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-lg rounded-xl transition-all pointer-events-auto shadow-[0_10px_40px_-10px_rgba(16,185,129,0.5)] hover:scale-105 active:scale-95"
-            >
-              Back to Menu
-            </button>
+            <div className="mt-8 flex gap-3 justify-center">
+              <button
+                onClick={() => setShowDetailsModal(true)}
+                className="px-6 py-4 bg-white/10 hover:bg-white/20 text-white font-bold text-lg rounded-xl transition-all pointer-events-auto hover:scale-105 active:scale-95"
+              >
+                View Details
+              </button>
+              <button
+                onClick={backToMenu}
+                className="px-10 py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-lg rounded-xl transition-all pointer-events-auto shadow-[0_10px_40px_-10px_rgba(16,185,129,0.5)] hover:scale-105 active:scale-95"
+              >
+                Back to Menu
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -369,16 +392,30 @@ export function GameControls() {
               <div className="text-sm text-purple-300 mt-2">
                 {description}
               </div>
-              <button
-                onClick={backToMenu}
-                className="mt-8 px-10 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold text-lg rounded-xl transition-all pointer-events-auto shadow-[0_10px_40px_-10px_rgba(168,85,247,0.5)] hover:scale-105 active:scale-95"
-              >
-                Back to Menu
-              </button>
+              <div className="mt-8 flex gap-3 justify-center">
+                <button
+                  onClick={() => setShowDetailsModal(true)}
+                  className="px-6 py-4 bg-white/10 hover:bg-white/20 text-white font-bold text-lg rounded-xl transition-all pointer-events-auto hover:scale-105 active:scale-95"
+                >
+                  View Details
+                </button>
+                <button
+                  onClick={backToMenu}
+                  className="px-10 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold text-lg rounded-xl transition-all pointer-events-auto shadow-[0_10px_40px_-10px_rgba(168,85,247,0.5)] hover:scale-105 active:scale-95"
+                >
+                  Back to Menu
+                </button>
+              </div>
             </div>
           </div>
         );
       })()}
+
+      {/* Match Details Modal */}
+      <MatchDetailsModal
+        isOpen={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+      />
     </>
   );
 }

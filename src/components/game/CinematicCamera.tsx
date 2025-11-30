@@ -34,6 +34,7 @@ export function CinematicCamera() {
     rightArcher,
     currentArrowPath,
     currentTurn,
+    isPaused,
   } = useGameStore();
 
   const currentLookAt = useRef(new Vector3(50, 2, 0));
@@ -109,6 +110,9 @@ export function CinematicCamera() {
 
   // Update camera smoothly each frame
   useFrame((_, delta) => {
+    // Skip camera movement when paused
+    if (isPaused) return;
+
     const target = getCameraTarget();
 
     // Different smoothness for different modes

@@ -14,6 +14,7 @@ import { StuckArrow } from './StuckArrow';
 import { CinematicCamera } from './CinematicCamera';
 import { StuckArrow as StuckArrowType } from '@/types/game';
 import { getRandomQuoteExcluding } from '@/config/ai-quotes';
+import { usePauseableTimeout } from '@/lib/use-pause';
 
 // Speech bubble state managed outside R3F for proper React state
 interface SpeechBubbleState {
@@ -162,10 +163,8 @@ function Scene({ speechBubble }: { speechBubble: SpeechBubbleState }) {
             setCurrentArrowPath(null);
             setCameraMode('result');
             useGameStore.getState().setPhase('result');
-            // Longer delay to show the result before next turn
-            setTimeout(() => {
-              nextTurn();
-            }, 3500);
+            // Note: nextTurn() is called via usePauseableTimeout in Arena component
+            // This ensures it pauses properly when alt-tabbing
           }}
           speed={1.0}
         />
@@ -178,12 +177,22 @@ export function Arena() {
   const matchSetup = useGameStore((s) => s.matchSetup);
   const phase = useGameStore((s) => s.phase);
   const currentTurn = useGameStore((s) => s.currentTurn);
+  const nextTurn = useGameStore((s) => s.nextTurn);
   const centerX = matchSetup ? matchSetup.distance / 2 : 50;
 
   // Speech bubble state - shows during shooting phase for the shooting archer
   const [speechBubble, setSpeechBubble] = useState<SpeechBubbleState>({ side: null, message: '' });
   const recentQuotesRef = useRef<string[]>([]);
   const lastShootingTurn = useRef<string | null>(null);
+
+  // Pauseable timer for result display - triggers nextTurn after 3.5s
+  usePauseableTimeout(
+    () => {
+      nextTurn();
+    },
+    phase === 'result' ? 3500 : null,
+    [nextTurn]
+  );
 
   // Show speech bubble during thinking phase (when camera focuses on archer)
   useEffect(() => {
@@ -212,6 +221,7 @@ export function Arena() {
     <div className="w-full h-full">
       <Canvas
         shadows
+        frameloop="always"
         camera={{
           position: [centerX, 20, 60],
           fov: 50,

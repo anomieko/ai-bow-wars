@@ -64,6 +64,9 @@ export interface Turn {
   result: HitResult;
   arrowPath: Vector2[];    // For animation
   timestamp: string;
+  // Debug/analysis data
+  prompt?: string;         // The prompt sent to the AI
+  rawResponse?: string;    // Raw AI response before parsing
 }
 
 // === Game State ===

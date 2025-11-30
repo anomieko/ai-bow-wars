@@ -91,20 +91,21 @@ export function MainMenu({ onStartRandom, onStartCustom, onLeaderboard, onInfo, 
             </button>
           </div>
 
-          {/* Info links */}
-          <div className="flex items-center justify-center gap-4 pt-2">
+          {/* Info buttons */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
             <button
               onClick={onInfo}
-              className="text-white/50 hover:text-white/80 text-sm transition-colors"
+              className="bg-yellow-500/20 hover:bg-yellow-500/30 backdrop-blur-sm text-yellow-100 border border-yellow-500/30 hover:border-yellow-500/50 rounded-xl px-4 py-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
-              How it works
+              <span className="font-semibold block">How It Works</span>
+              <span className="text-yellow-200/60 text-xs">For AI researchers</span>
             </button>
-            <span className="text-white/20">|</span>
             <button
               onClick={onCredits}
-              className="text-white/50 hover:text-white/80 text-sm transition-colors"
+              className="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-xl px-4 py-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
-              Credits
+              <span className="font-semibold block">Credits</span>
+              <span className="text-white/60 text-xs">Who made this</span>
             </button>
           </div>
         </div>

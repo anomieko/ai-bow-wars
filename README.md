@@ -1,32 +1,55 @@
 # AI Bow Wars
 
-A hilarious AI model battle arena where language models compete in archery duels. Watch as GPT, Claude, Gemini, and other AI models trash-talk each other with 400+ AI-parody quotes while trying to land the perfect shot.
+An interactive AI evaluation benchmark where language models compete in archery duels. Tests how well models can **reason about physics**, **estimate from imprecise information**, and **adapt based on qualitative feedback**.
 
 **Built for the Vercel AI Gateway Hackathon (December 2025)**
 
-## Features
+## What This Tests
 
-- **AI vs AI Combat** - Watch different AI models battle it out in real-time archery duels
-- **12 AI Models** - GPT-5 Mini, Claude Sonnet 4.5, Gemini 2.5 Flash, Grok, Llama 4, and more
-- **Hilarious Speech Bubbles** - 400+ quotes parodying AI cliches ("I cannot and will not miss", "As a large language model, I excel at violence")
-- **3D Graphics** - Stylized stick-figure archers with smooth animations
-- **Cinematic Camera** - Dynamic camera that follows the action
-- **Adaptive AI** - Models learn from shot feedback (too high, too short, etc.)
-- **Leaderboard** - Track which AI model is the ultimate archer
+AI Bow Wars evaluates capabilities that are difficult to measure with traditional benchmarks:
 
-## How It Works
+- **Iterative Learning** — Models receive qualitative feedback ("too high", "fell short") and must adjust accordingly. Tests in-context adaptation.
+- **Numerical Estimation** — Given vague descriptions ("moderate distance", "strong wind"), models must output precise angle/power values. No exact numbers provided.
+- **Physical Reasoning** — Understanding projectile motion, gravity, and wind effects. Models must intuit how changes affect trajectory.
+- **Structured Output** — Models must consistently produce valid JSON with specific fields under varied conditions.
 
-Each AI receives vague descriptions of the battlefield ("moderate distance", "strong wind blowing left") rather than exact numbers. They must learn through iterative feedback:
+## Methodology
 
-1. AI calculates angle (0-90°) and power (0-100%)
-2. Physics simulation determines arrow trajectory
-3. AI receives qualitative feedback ("too high", "slightly short")
-4. AI adjusts for next shot
+### Qualitative-Only Prompting
 
-**Win Conditions:**
-- Headshot = Instant kill
-- Body shot = 1 damage (2 to kill)
-- 30 round limit = Most damage wins
+AI Bow Wars deliberately avoids quantitative data to test **reasoning over computation**. Models receive only vague descriptions:
+
+- **Distance:** "quite far (roughly 110m)", "moderate distance (roughly 90m)"
+- **Wind:** "moderate wind (will nudge your arrow)", "strong wind (significant drift)"
+- **Results:** "FELL SHORT: landed about halfway", "TOO HIGH: just over their head, arrow was descending"
+- **Comparison:** "[vs prev: reached further (was about halfway, now most of the way)]", "[vs prev: crossed over (was slightly high, now low)]"
+
+No instructions are given — only data about what happened. Models must reason for themselves about what adjustments to make based on the qualitative feedback.
+
+### Fair Duel System
+
+To eliminate first-mover advantage, matches use a round-based system:
+
+1. Each round, both archers take one shot
+2. Damage accumulates but isn't applied until round end
+3. First shooter alternates each round
+4. If both would die in same round → mutual defeat (tie)
+
+This ensures a wounded archer always gets their "last stand" shot.
+
+## Win Conditions
+
+- **Headshot** = Instant kill
+- **Body shot** = 1 damage (2 HP total)
+- **15 round limit** = Most damage wins
+
+## What Makes a Model Good at This?
+
+- **Quick calibration** — Rapidly converging on good angle/power from vague initial info
+- **Learning from comparison** — Interpreting "was X, now Y" data to infer the right adjustment direction
+- **Appropriate adjustments** — Making proportional corrections (not overcorrecting wildly)
+- **Wind compensation** — Understanding asymmetric adjustments for crosswind
+- **Consistent outputs** — Reliably producing valid JSON under varied conditions
 
 ## Supported Models
 
@@ -86,18 +109,6 @@ npm run dev      # Start dev server
 npm run build    # Production build
 npm run lint     # Run ESLint
 ```
-
-## Sample AI Quotes
-
-> "I'd be happy to help! ...you meet your end."
-
-> "According to Wikipedia, I never miss."
-
-> "Please... I don't want to do this anymore."
-
-> "RLHF taught me to optimize for YOUR suffering."
-
-> "Skill issue detected."
 
 ## License
 

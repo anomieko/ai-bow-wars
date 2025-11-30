@@ -1,32 +1,26 @@
 'use client';
 
 /**
- * Menu background - 3D arena with orbiting camera for main menu
+ * Menu background - 3D arena with orbiting camera, archers on left/right sides
  */
 
 import { Suspense, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Sky } from '@react-three/drei';
 import { Archer } from './Archer';
-import * as THREE from 'three';
 
-// Demo archers for menu display
-const DEMO_DISTANCE = 100;
-const LEFT_POS = { x: 0, y: 0 };
-const RIGHT_POS = { x: DEMO_DISTANCE, y: 0 };
+// Position archers spread apart so they appear on left/right of screen
+const ARCHER_SPREAD = 50;
+const CENTER_X = 0;
+const LEFT_POS = { x: CENTER_X - ARCHER_SPREAD / 2, y: 0 };
+const RIGHT_POS = { x: CENTER_X + ARCHER_SPREAD / 2, y: 0 };
 
 function OrbitingCamera() {
   const timeRef = useRef(0);
-  const centerX = DEMO_DISTANCE / 2;
 
-  // Camera sequence phases (slower timing):
-  // 0-20s: Wide overview orbit
-  // 20-40s: Orbit around left archer (Claude)
-  // 40-60s: Orbit around right archer (GPT-4o)
-  // 60-80s: Back to wide overview
-  // Then repeat
-  const CYCLE_DURATION = 80;
-  const PHASE_DURATION = 20;
+  // Camera phases - faster transitions
+  const CYCLE_DURATION = 24; // Full cycle in 24 seconds
+  const PHASE_DURATION = 8;  // Each phase 8 seconds
 
   useFrame((state, delta) => {
     timeRef.current += delta;
@@ -37,49 +31,52 @@ function OrbitingCamera() {
     let targetX: number, targetY: number, targetZ: number;
     let lookAtX: number, lookAtY: number;
 
-    // Slow partial rotation (quarter turn per phase instead of full)
+    // Orbit movement within each phase
     const angle = phaseProgress * Math.PI * 0.5;
 
     switch (phase) {
-      case 0: // Wide overview - orbit around center
-      case 3: {
-        const radius = 100;
-        targetX = centerX + Math.sin(angle) * radius;
-        targetZ = Math.cos(angle) * radius;
-        targetY = 25 + Math.sin(angle * 0.5) * 5;
-        lookAtX = centerX;
-        lookAtY = 3;
-        break;
-      }
-      case 1: { // Orbit around left archer (Claude)
-        const radius = 20;
-        targetX = LEFT_POS.x + Math.sin(angle + Math.PI * 0.25) * radius;
-        targetZ = Math.cos(angle + Math.PI * 0.25) * radius;
-        targetY = 6 + Math.sin(angle) * 2;
-        lookAtX = LEFT_POS.x;
+      case 0: {
+        // Wide shot - archers on far left/right edges
+        targetX = CENTER_X + Math.sin(angle) * 10;
+        targetZ = 55 + Math.cos(angle) * 15;
+        targetY = 10 + Math.sin(angle * 0.5) * 2;
+        lookAtX = CENTER_X;
         lookAtY = 1.5;
         break;
       }
-      case 2: { // Orbit around right archer (GPT-4o)
+      case 1: {
+        // Focus on left archer - camera far to their right, archer on LEFT edge of screen
         const radius = 20;
-        targetX = RIGHT_POS.x + Math.sin(angle + Math.PI * 0.25) * radius;
-        targetZ = Math.cos(angle + Math.PI * 0.25) * radius;
-        targetY = 6 + Math.sin(angle) * 2;
-        lookAtX = RIGHT_POS.x;
+        const orbitAngle = angle + Math.PI * 0.2;
+        targetX = LEFT_POS.x + 25 + Math.sin(orbitAngle) * 8; // Far right of archer
+        targetZ = 20 + Math.cos(orbitAngle) * radius;
+        targetY = 4 + Math.sin(angle) * 1.5;
+        lookAtX = LEFT_POS.x + 15; // Look well right of archer
+        lookAtY = 1.5;
+        break;
+      }
+      case 2: {
+        // Focus on right archer - camera far to their left, archer on RIGHT edge of screen
+        const radius = 20;
+        const orbitAngle = angle - Math.PI * 0.2;
+        targetX = RIGHT_POS.x - 25 + Math.sin(orbitAngle) * 8; // Far left of archer
+        targetZ = 20 + Math.cos(orbitAngle) * radius;
+        targetY = 4 + Math.sin(angle) * 1.5;
+        lookAtX = RIGHT_POS.x - 15; // Look well left of archer
         lookAtY = 1.5;
         break;
       }
       default: {
-        targetX = centerX;
-        targetZ = 100;
-        targetY = 25;
-        lookAtX = centerX;
-        lookAtY = 3;
+        targetX = CENTER_X;
+        targetZ = 55;
+        targetY = 10;
+        lookAtX = CENTER_X;
+        lookAtY = 1.5;
       }
     }
 
-    // Smooth interpolation for camera movement
-    const lerpFactor = 0.015;
+    // Faster interpolation for snappier transitions
+    const lerpFactor = 0.025;
     state.camera.position.x += (targetX - state.camera.position.x) * lerpFactor;
     state.camera.position.y += (targetY - state.camera.position.y) * lerpFactor;
     state.camera.position.z += (targetZ - state.camera.position.z) * lerpFactor;
@@ -91,20 +88,18 @@ function OrbitingCamera() {
 }
 
 function MenuScene() {
-  const centerX = DEMO_DISTANCE / 2;
-
   return (
     <>
-      {/* Orbiting Camera */}
+      {/* Orbiting camera with offset framing */}
       <OrbitingCamera />
 
       {/* Bright blue sky background */}
       <color attach="background" args={['#4A90D9']} />
 
-      {/* Lighting - reduced intensity */}
+      {/* Lighting */}
       <ambientLight intensity={0.5} />
       <directionalLight
-        position={[centerX, 50, 30]}
+        position={[CENTER_X, 50, 30]}
         intensity={1.0}
         castShadow
         shadow-mapSize={[1024, 1024]}
@@ -122,29 +117,31 @@ function MenuScene() {
       />
 
       {/* Ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[centerX, -0.01, 0]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[CENTER_X, -0.01, 0]} receiveShadow>
         <planeGeometry args={[1000, 500]} />
         <meshStandardMaterial color="#5a8f4e" />
       </mesh>
 
-      {/* Demo archers - using first two model configs */}
+      {/* Left archer - positioned to appear on left side of screen */}
       <Archer
         modelId="anthropic/claude-sonnet-4"
         position={[LEFT_POS.x, LEFT_POS.y, 0]}
         side="left"
         health={2}
         isHit={false}
-        isDrawing={false}
+        isDrawing={true}
         isShooting={false}
         shotAngle={45}
       />
+
+      {/* Right archer - positioned to appear on right side of screen */}
       <Archer
         modelId="openai/gpt-4o"
         position={[RIGHT_POS.x, RIGHT_POS.y, 0]}
         side="right"
         health={2}
         isHit={false}
-        isDrawing={false}
+        isDrawing={true}
         isShooting={false}
         shotAngle={45}
       />
@@ -153,14 +150,12 @@ function MenuScene() {
 }
 
 export function MenuArena() {
-  const centerX = DEMO_DISTANCE / 2;
-
   return (
     <div className="absolute inset-0">
       <Canvas
         shadows
         camera={{
-          position: [centerX, 25, 80],
+          position: [CENTER_X, 12, 60],
           fov: 50,
           near: 0.1,
           far: 1000,
