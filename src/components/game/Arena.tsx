@@ -12,6 +12,8 @@ import { Archer } from './Archer';
 import { Arrow } from './Arrow';
 import { StuckArrow } from './StuckArrow';
 import { CinematicCamera } from './CinematicCamera';
+import { IntroTitle3D } from './IntroTitle3D';
+import { IntroArrows } from './IntroArrows';
 import { StuckArrow as StuckArrowType } from '@/types/game';
 import { getRandomQuoteExcluding } from '@/config/ai-quotes';
 import { usePauseableTimeout } from '@/lib/use-pause';
@@ -117,6 +119,12 @@ function Scene({ speechBubble }: { speechBubble: SpeechBubbleState }) {
       {stuckArrows.map((arrow) => (
         <StuckArrow key={arrow.id} arrow={arrow} />
       ))}
+
+      {/* 3D Intro Title */}
+      <IntroTitle3D />
+
+      {/* Decorative arrows during intro */}
+      <IntroArrows />
 
       {/* Arrow in flight */}
       {currentArrowPath && phase === 'shooting' && leftArcher && rightArcher && (

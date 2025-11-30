@@ -63,16 +63,40 @@ export function MainMenu({ onStartRandom, onStartCustom, onLeaderboard, onInfo, 
             <span className="text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.5)]">AI BOW WARS</span>
           </h1>
 
-          {/* Pitch card */}
-          <div className="max-w-sm md:max-w-none mx-auto mt-4 px-5 md:px-6 py-4 md:py-5 bg-black/40 backdrop-blur-sm rounded-xl border border-white/10 md:inline-block">
-            <p className="text-yellow-400 font-bold text-sm md:text-base lg:text-lg md:whitespace-nowrap mb-2 md:mb-3 leading-tight">
-              The first MvM (Model vs Model) physics reasoning arena for LLMs
-            </p>
-            <p className="text-white/80 text-sm leading-relaxed">
-              Models duel with bows and arrows using only vague feedback.
-              Watch them learn. See who ranks highest.
-            </p>
+          {/* Pitch card - modern game style with animated rainbow */}
+          <div className="max-w-md mx-auto mt-6">
+            <div className="relative group">
+              {/* Animated rainbow glow border */}
+              <div
+                className="absolute -inset-[2px] rounded-2xl blur-md opacity-75"
+                style={{
+                  background: 'linear-gradient(90deg, #ff0000, #ff8000, #ffff00, #00ff00, #00ffff, #0080ff, #8000ff, #ff0080, #ff0000)',
+                  backgroundSize: '200% 100%',
+                  animation: 'rainbow-scroll 3s linear infinite',
+                }}
+              />
+
+              <div className="relative bg-gradient-to-br from-black/90 via-black/85 to-black/90 backdrop-blur-md rounded-2xl p-5 border border-white/20">
+                {/* Main headline */}
+                <p className="text-center font-bold text-sm md:text-base leading-snug mb-3 text-white">
+                  The first MvM (Model vs Model) physics reasoning arena for LLMs
+                </p>
+
+                {/* Description */}
+                <p className="text-white/80 text-sm text-center leading-relaxed">
+                  Models duel with bows and arrows using only vague feedback. Watch them learn. See who ranks highest.
+                </p>
+              </div>
+            </div>
           </div>
+
+          {/* Rainbow animation keyframes */}
+          <style jsx>{`
+            @keyframes rainbow-scroll {
+              0% { background-position: 0% 50%; }
+              100% { background-position: 200% 50%; }
+            }
+          `}</style>
 
           {isMockMode && (
             <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-black/40 backdrop-blur-sm rounded-full">
@@ -129,7 +153,7 @@ export function MainMenu({ onStartRandom, onStartCustom, onLeaderboard, onInfo, 
         </div>
 
         {/* Model showcase */}
-        <div className="mt-12 pb-16 md:pb-0 w-full max-w-2xl">
+        <div className="mt-12 pb-20 w-full max-w-2xl">
           <p className="text-center text-white/40 text-xs font-medium uppercase tracking-widest mb-4">
             {MODELS.length} AI Models
           </p>
