@@ -40,9 +40,14 @@ export function GameControls() {
   const isThinking = phase === 'thinking' && thinkingModelId;
   const thinkingConfig = thinkingModelId ? getModelConfig(thinkingModelId) : null;
 
-  // Calculate if pending damage would kill (for flashing)
-  const leftWillDie = leftArcher && pendingDamage.left >= leftArcher.health;
-  const rightWillDie = rightArcher && pendingDamage.right >= rightArcher.health;
+  // Only show pending damage after arrow lands (result phase), not during shooting
+  const showPendingDamage = phase === 'result';
+  const displayedPendingLeft = showPendingDamage ? pendingDamage.left : 0;
+  const displayedPendingRight = showPendingDamage ? pendingDamage.right : 0;
+
+  // Calculate if pending damage would kill (for flashing) - only during result phase
+  const leftWillDie = showPendingDamage && leftArcher && pendingDamage.left >= leftArcher.health;
+  const rightWillDie = showPendingDamage && rightArcher && pendingDamage.right >= rightArcher.health;
 
   // Health bar component with pending damage visualization
   const HealthBar = ({
@@ -137,7 +142,7 @@ export function GameControls() {
                 <div className="text-white font-semibold text-sm">{leftConfig.name}</div>
                 <HealthBar
                   health={leftArcher?.health ?? 0}
-                  pending={pendingDamage.left}
+                  pending={displayedPendingLeft}
                   willDie={!!leftWillDie}
                   color={leftConfig.color}
                 />
@@ -155,7 +160,7 @@ export function GameControls() {
                 <div className="text-white font-semibold text-sm">{rightConfig.name}</div>
                 <HealthBar
                   health={rightArcher?.health ?? 0}
-                  pending={pendingDamage.right}
+                  pending={displayedPendingRight}
                   willDie={!!rightWillDie}
                   color={rightConfig.color}
                   reverse
