@@ -4,12 +4,93 @@
  * 3D Archer component - a stylized stick figure with bow and shooting animation
  */
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { Group } from 'three';
 import { Text, Line, Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { getModelConfig } from '@/config/models';
 import { useGameStore } from '@/lib/game-store';
+
+// Blood particle for hit effects
+interface BloodParticle {
+  id: number;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  size: number;
+  life: number;
+}
+
+// Animated blood particles component
+function BloodParticles({ originY, isPaused }: { originY: number; isPaused: boolean }) {
+  const [particles, setParticles] = useState<BloodParticle[]>([]);
+  const initialized = useRef(false);
+
+  // Initialize particles once on mount
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
+    const newParticles: BloodParticle[] = [];
+    for (let i = 0; i < 20; i++) {
+      // Random direction burst
+      const angle = Math.random() * Math.PI * 2;
+      const upAngle = Math.random() * Math.PI * 0.5 + Math.PI * 0.25; // Mostly upward
+      const speed = 3 + Math.random() * 4;
+
+      newParticles.push({
+        id: i,
+        x: (Math.random() - 0.5) * 0.3,
+        y: originY + (Math.random() - 0.5) * 0.4,
+        z: (Math.random() - 0.5) * 0.3,
+        vx: Math.cos(angle) * Math.sin(upAngle) * speed,
+        vy: Math.cos(upAngle) * speed + 3, // Extra upward boost
+        vz: Math.sin(angle) * Math.sin(upAngle) * speed * 0.5,
+        size: 0.08 + Math.random() * 0.08, // Larger particles (8-16cm)
+        life: 1.5, // Longer life
+      });
+    }
+    setParticles(newParticles);
+  }, [originY]);
+
+  // Animate particles
+  useFrame((_, delta) => {
+    if (isPaused) return;
+
+    setParticles(prev => {
+      const updated = prev.map(p => ({
+        ...p,
+        x: p.x + p.vx * delta,
+        y: p.y + p.vy * delta,
+        z: p.z + p.vz * delta,
+        vy: p.vy - 8 * delta, // Softer gravity for floatier feel
+        life: p.life - delta * 0.8, // Slower fade out (~1.9 seconds)
+      })).filter(p => p.life > 0 && p.y > -0.5);
+
+      return updated;
+    });
+  });
+
+  if (particles.length === 0) return null;
+
+  return (
+    <>
+      {particles.map(p => (
+        <mesh key={p.id} position={[p.x, p.y, p.z]}>
+          <sphereGeometry args={[p.size * (0.5 + p.life * 0.5), 8, 8]} />
+          <meshBasicMaterial
+            color="#ff2222"
+            transparent
+            opacity={Math.min(1, p.life)}
+          />
+        </mesh>
+      ))}
+    </>
+  );
+}
 
 interface ArcherProps {
   modelId: string;
@@ -30,6 +111,8 @@ export function Archer({ modelId, position, side, health, isHit = false, isDrawi
   const [shakeOffset, setShakeOffset] = useState({ x: 0, y: 0 });
   const [drawProgress, setDrawProgress] = useState(0); // 0 = relaxed, 1 = fully drawn
   const [currentAimAngle, setCurrentAimAngle] = useState(0); // Smoothly animated aim angle
+  const [bloodBursts, setBloodBursts] = useState<number[]>([]); // Track active blood particle bursts
+  const wasHitRef = useRef(false); // Track previous hit state to detect transitions
   const isPaused = useGameStore((s) => s.isPaused);
 
   // Flip archer to face opponent
@@ -44,12 +127,23 @@ export function Archer({ modelId, position, side, health, isHit = false, isDrawi
   // Opacity based on health
   const opacity = health === 0 ? 0.3 : health === 1 ? 0.7 : 1;
 
-  // Hit flash effect
+  // Hit flash effect + spawn blood particles - detect false→true transition
   useEffect(() => {
-    if (isHit) {
+    if (isHit && !wasHitRef.current) {
+      // New hit detected (false → true transition)
       setHitFlash(1);
+      // Spawn new blood burst with unique ID
+      const burstId = Date.now();
+      setBloodBursts(prev => [...prev, burstId]);
+      // Clean up old bursts after animation completes
+      setTimeout(() => {
+        setBloodBursts(prev => prev.filter(id => id !== burstId));
+      }, 2500);
       const timer = setTimeout(() => setHitFlash(0), 300);
+      wasHitRef.current = true;
       return () => clearTimeout(timer);
+    } else if (!isHit) {
+      wasHitRef.current = false;
     }
   }, [isHit]);
 
@@ -273,24 +367,10 @@ export function Archer({ modelId, position, side, health, isHit = false, isDrawi
         </group>
       </group>
 
-      {/* Hit indicator particles */}
-      {hitFlash > 0 && (
-        <>
-          {[...Array(8)].map((_, i) => (
-            <mesh
-              key={i}
-              position={[
-                (Math.random() - 0.5) * 0.6,
-                torsoY + (Math.random() - 0.5) * 0.8,
-                (Math.random() - 0.5) * 0.3,
-              ]}
-            >
-              <sphereGeometry args={[0.04, 6, 6]} />
-              <meshBasicMaterial color="#ff0000" />
-            </mesh>
-          ))}
-        </>
-      )}
+      {/* Animated blood particle bursts */}
+      {bloodBursts.map(burstId => (
+        <BloodParticles key={burstId} originY={torsoY} isPaused={isPaused} />
+      ))}
     </group>
   );
 }

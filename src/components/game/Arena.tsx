@@ -89,7 +89,7 @@ function Scene({ speechBubble }: { speechBubble: SpeechBubbleState }) {
           position={[leftArcher.position.x, leftArcher.position.y, 0]}
           side="left"
           health={leftArcher.health}
-          isHit={lastHitResult?.type !== 'miss' && currentTurn === 'right'}
+          isHit={phase === 'result' && lastHitResult?.type !== 'miss' && currentTurn === 'right'}
           isDrawing={phase === 'thinking' && currentTurn === 'left'}
           isShooting={phase === 'shooting' && currentTurn === 'left'}
           shotAngle={getArcherShotAngle('left')}
@@ -102,7 +102,7 @@ function Scene({ speechBubble }: { speechBubble: SpeechBubbleState }) {
           position={[rightArcher.position.x, rightArcher.position.y, 0]}
           side="right"
           health={rightArcher.health}
-          isHit={lastHitResult?.type !== 'miss' && currentTurn === 'left'}
+          isHit={phase === 'result' && lastHitResult?.type !== 'miss' && currentTurn === 'left'}
           isDrawing={phase === 'thinking' && currentTurn === 'right'}
           isShooting={phase === 'shooting' && currentTurn === 'right'}
           shotAngle={getArcherShotAngle('right')}
