@@ -14,6 +14,7 @@ import { PausedOverlay } from '@/components/ui/PausedOverlay';
 import { MobileIntro } from '@/components/ui/MobileIntro';
 import { MobileBattleLog } from '@/components/ui/MobileBattleLog';
 import { useGameStore } from '@/lib/game-store';
+import { useWakeLock } from '@/lib/use-wake-lock';
 
 export default function Home() {
   const {
@@ -21,7 +22,13 @@ export default function Home() {
     setScreen,
     selectRandomModels,
     isPaused,
+    phase,
   } = useGameStore();
+
+  // Keep screen awake during active matches (mobile only)
+  // Active when in game screen and match is in progress (not setup or finished)
+  const isMatchActive = screen === 'game' && phase !== 'setup' && phase !== 'finished';
+  useWakeLock(isMatchActive);
 
   // Main Menu
   if (screen === 'menu') {
