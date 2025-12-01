@@ -79,7 +79,7 @@ export function MainMenu({ onStartRandom, onStartCustom, onLeaderboard, onInfo, 
               <div className="relative bg-gradient-to-br from-black/90 via-black/85 to-black/90 backdrop-blur-md rounded-2xl p-5 border border-white/20">
                 {/* Main headline */}
                 <p className="text-center font-bold text-sm md:text-base leading-snug mb-3 text-white">
-                  The first MvM (Model vs Model) physics reasoning arena for LLMs
+                  MvM (Model vs Model) physics reasoning arena for LLMs
                 </p>
 
                 {/* Description */}
