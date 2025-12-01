@@ -84,7 +84,7 @@ export function MainMenu({ onStartRandom, onStartCustom, onLeaderboard, onInfo, 
 
                 {/* Description */}
                 <p className="text-white/80 text-sm text-center leading-relaxed">
-                  Models duel with bows and arrows using only vague feedback. Watch them learn. See who ranks highest.
+                  Models compete using qualitative data only: vague distances, wind descriptions, and shot feedback in words. Without exact values, they can't calculate trajectories. They must reason. Compare how different models perform.
                 </p>
               </div>
             </div>
